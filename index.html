@@ -1,0 +1,597 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Ons Huis</title>
+<meta name="theme-color" content="#2c6e5b">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Ons Huis">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: dollhouse cutaway (real time of day, season, weather) on top; spot rings, reminders, samen and jaarwiel below; bottom sheet per spot; bottom tab bar. */
+:root{
+  --bg:#eef2ea; --surface:#ffffff; --surface-2:#f6f8f3; --ink:#1d2721; --muted:#5d6a62; --line:#d7ded3;
+  --accent:#2c6e5b; --accent-ink:#ffffff; --p2:#d9703f; --good:#3f9a5a; --warn:#d49a2a; --bad:#c2523f;
+  --f-display:"Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
+  --f-body:"Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#111713; --surface:#1a221d; --surface-2:#202a24; --ink:#e6eee8; --muted:#9ba89f; --line:#2c3831;
+  --accent:#6cc3a6; --accent-ink:#0f1a15; --p2:#f0a074; --good:#6cc38a; --warn:#e8b955; --bad:#e8826f; color-scheme:dark }}
+:root[data-theme="dark"]{
+  --bg:#111713; --surface:#1a221d; --surface-2:#202a24; --ink:#e6eee8; --muted:#9ba89f; --line:#2c3831;
+  --accent:#6cc3a6; --accent-ink:#0f1a15; --p2:#f0a074; --good:#6cc38a; --warn:#e8b955; --bad:#e8826f; color-scheme:dark }
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+img{max-width:100%}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;min-height:100vh;padding-top:env(safe-area-inset-top,0px);background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45}
+.wrap{max-width:760px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:14px 110px}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0;letter-spacing:-.01em}
+h1{font-size:1.6rem;font-weight:800}
+h2{font-size:1.2rem;font-weight:700}
+h3{font-size:1rem;font-weight:700}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.muted{color:var(--muted)}
+.eyebrow{font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.top{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:6px}
+.glow{display:flex;align-items:center;gap:10px}
+.glow-num{font-family:var(--f-display);font-size:1.9rem;font-weight:800;font-variant-numeric:tabular-nums;line-height:1}
+.banner{background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:.85rem;color:var(--muted)}
+.clockline{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:.85rem}
+.pill{display:inline-flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:99px;padding:4px 10px;font-variant-numeric:tabular-nums}
+button.pill:hover{border-color:var(--accent)}
+.clock{font-family:var(--f-display);font-weight:700;font-size:1rem}
+.weather-pick{display:flex;flex-wrap:wrap;gap:6px}
+.weather-pick button{background:var(--surface);border:1px solid var(--line);border-radius:99px;padding:5px 11px;font-size:.85rem}
+.weather-pick button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+
+/* Scene */
+.scene-box{border-radius:18px;overflow:hidden;border:1px solid var(--line);background:#cfe3ee}
+.scene{display:block;width:100%;height:auto;max-width:100%;--out:1}
+.scene .spot{cursor:pointer}
+.scene .spot:hover{filter:brightness(1.08)}
+.outside{filter:brightness(var(--out))}
+@keyframes drip{0%{transform:translateY(0);opacity:1}100%{transform:translateY(26px);opacity:0}}
+.drop{animation:drip 1.3s linear infinite}.drop:nth-child(2){animation-delay:.6s}
+@keyframes twinkle{0%,100%{opacity:.25}50%{opacity:1}}
+.spark,.star{animation:twinkle 2.6s ease-in-out infinite}
+.star:nth-child(3n){animation-delay:.9s}.star:nth-child(3n+1){animation-delay:1.7s}
+@keyframes pulse{0%{r:5;opacity:.9}100%{r:13;opacity:0}}
+.pulse{animation:pulse 1.6s ease-out infinite}
+@keyframes blink{0%,49%{opacity:1}50%,100%{opacity:.15}}
+.blink{animation:blink 1s steps(1) infinite}
+@keyframes fall{0%{transform:translate(0,-30px)}100%{transform:translate(-14px,440px)}}
+.rainline{animation:fall .7s linear infinite}
+@keyframes snowfall{0%{transform:translate(0,-20px)}100%{transform:translate(18px,430px)}}
+.flake{animation:snowfall 7s linear infinite}
+@keyframes leaf{0%{transform:translate(0,0) rotate(0)}100%{transform:translate(40px,120px) rotate(320deg)}}
+.leaf{animation:leaf 5s ease-in infinite;transform-box:fill-box}
+@keyframes flash{0%,93%,100%{opacity:0}94%,96%{opacity:.85}}
+.bolt{animation:flash 6s linear infinite}
+@keyframes drift{0%{transform:translateX(-40px)}100%{transform:translateX(40px)}}
+.cloud{animation:drift 30s ease-in-out infinite alternate}
+@keyframes puff{0%{transform:translate(0,0) scale(.6);opacity:.8}100%{transform:translate(14px,-34px) scale(1.8);opacity:0}}
+.puff{animation:puff 3.6s ease-out infinite;transform-box:fill-box;transform-origin:center}
+.puff:nth-child(2){animation-delay:1.2s}.puff:nth-child(3){animation-delay:2.4s}
+@media (prefers-reduced-motion: reduce){.puff,.drop,.spark,.star,.pulse,.blink,.rainline,.flake,.leaf,.bolt,.cloud{animation:none}}
+
+/* Spot chips */
+.zones{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.zchip{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:7px 10px;text-align:left}
+.zchip:hover{border-color:var(--accent)}
+.zchip .t{min-width:0}
+.zchip .n{font-weight:600;font-size:.9rem;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.zchip .s{font-size:.76rem;color:var(--muted);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ring-bg{stroke:var(--line)}
+.ring-num{font-family:var(--f-body);font-weight:700;font-size:11px;fill:var(--ink)}
+
+/* Cards */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px}
+.samen{display:grid;gap:8px}
+.samen-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.bar{height:12px;border-radius:99px;background:var(--surface-2);border:1px solid var(--line);overflow:hidden;display:flex}
+.bar span{display:block;height:100%}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:.82rem;color:var(--muted)}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:middle}
+.att-list{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:8px}
+.att-list li{display:flex;justify-content:space-between;gap:8px;align-items:center}
+.att-list button.link{background:none;border:0;padding:0;text-align:left;color:var(--ink);font-weight:500;min-width:0}
+.tag{font-size:.72rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;border-radius:6px;padding:2px 6px;background:var(--surface-2);border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.tag.gift{color:var(--p2);border-color:var(--p2)}
+.wheel-wrap{display:grid;grid-template-columns:minmax(0,260px) 1fr;gap:16px;align-items:center}
+@media (max-width:560px){.wheel-wrap{grid-template-columns:1fr}}
+.wheel{width:100%;max-width:260px;height:auto;justify-self:center}
+.wheel text{font-family:var(--f-body);fill:var(--muted);font-size:9px;font-weight:600}
+.wheel .center-big{font-family:var(--f-display);font-size:26px;font-weight:800;fill:var(--ink)}
+.wheel .center-small{font-size:9px;fill:var(--muted)}
+.upcoming{list-style:none;margin:0;padding:0;display:grid;gap:6px;font-size:.9rem}
+.upcoming li{display:flex;justify-content:space-between;gap:10px}
+.upcoming .d{color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+
+/* Sheet */
+.scrim{position:fixed;inset:0;background:rgba(10,15,12,.42);z-index:40}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:41;background:var(--bg);border-radius:18px 18px 0 0;max-height:88%;overflow:auto;
+  padding:16px max(16px,env(safe-area-inset-right,0px)) calc(20px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));box-shadow:0 -10px 40px rgba(0,0,0,.18)}
+.sheet-in{max-width:720px;margin:0 auto;display:grid;gap:14px}
+.sheet-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.x{background:var(--surface);border:1px solid var(--line);border-radius:99px;width:36px;height:36px;font-size:1.1rem;line-height:1;flex:none}
+.tasks{display:grid;gap:8px}
+.task{display:grid;grid-template-columns:48px 1fr auto;gap:10px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px}
+.task .meta{font-size:.8rem;color:var(--muted)}
+.task .name{font-weight:600}
+.btn{background:var(--accent);color:var(--accent-ink);border:0;border-radius:10px;padding:8px 12px;font-weight:600}
+.btn.ghost{background:var(--surface);color:var(--ink);border:1px solid var(--line)}
+.btn.small{padding:5px 9px;font-size:.82rem}
+.btn:disabled{opacity:.5}
+details.edit{grid-column:1/-1}
+details.edit summary{font-size:.8rem;color:var(--muted);cursor:pointer;list-style:none}
+details.edit summary::-webkit-details-marker{display:none}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.row > *{min-width:0}
+input[type=text],input[type=number],input[type=date],textarea,select{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 10px;width:100%}
+input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent)}
+.grow{flex:1 1 160px}
+.n-input{width:76px!important;flex:0 0 76px}
+.list{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.list li{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+.list li.done span{text-decoration:line-through;color:var(--muted)}
+.list li > span{flex:1;min-width:0}
+.empty{border:1px dashed var(--line);border-radius:12px;padding:12px;color:var(--muted);font-size:.88rem}
+.extlinks{display:flex;gap:10px;flex-wrap:wrap;font-size:.85rem}
+.extlinks a{color:var(--accent);font-weight:600}
+.askbtn{background:none;border:0;color:var(--accent);font-weight:600;padding:0;text-align:left}
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.tile{display:grid;gap:6px;justify-items:start;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px;text-align:left}
+.tile:hover{border-color:var(--accent)}
+.tile .tn{font-weight:700;font-family:var(--f-display);font-size:1rem}
+.tile .ts{font-size:.8rem;color:var(--muted)}
+.back{background:none;border:0;padding:0;color:var(--muted);font-weight:600;font-size:.85rem;text-align:left}
+.once{display:grid;grid-template-columns:auto 1fr auto auto;gap:10px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px}
+.once .meta{font-size:.8rem;color:var(--muted)}
+.once.late .meta{color:var(--bad);font-weight:600}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg button{background:var(--surface);border:0;padding:7px 11px;font-size:.85rem}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.pot{display:grid;gap:6px;padding-block:10px;border-top:1px solid var(--line)}
+.pot:first-of-type{border-top:0}
+.pot-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+.pot-head b{font-family:var(--f-display);font-size:1rem}
+.bar{position:relative}
+.bar .mark{position:absolute;top:0;bottom:0;width:2px;background:var(--ink);opacity:.35}
+.pts{font-variant-numeric:tabular-nums;color:var(--muted);font-size:.85rem}
+.spin{border:1px dashed var(--accent);border-radius:12px;padding:14px;text-align:center;display:grid;gap:4px}
+.spin .spin-t{font-family:var(--f-display);font-size:1.35rem;font-weight:800;color:var(--accent);min-height:1.6em}
+.win-list{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.win-list li{display:flex;gap:10px;align-items:center}
+.win-list li > span{flex:1;min-width:0}
+.swipe-area{display:grid;place-items:center;padding-block:6px}
+.swipe-card{position:relative;width:min(100%,320px);min-height:210px;border-radius:20px;background:var(--surface);border:1px solid var(--line);box-shadow:0 10px 30px rgba(0,0,0,.12);display:grid;align-content:center;justify-items:center;gap:8px;padding:28px 20px;text-align:center;touch-action:none;user-select:none;-webkit-user-select:none;cursor:grab;transition:transform .25s ease,opacity .2s}
+.swipe-t{font-family:var(--f-display);font-size:1.6rem;font-weight:800;text-wrap:balance;line-height:1.15}
+.stamp{position:absolute;top:16px;font-family:var(--f-display);font-weight:800;font-size:1.05rem;border:3px solid;border-radius:8px;padding:2px 8px;opacity:0;transition:opacity .15s}
+.stamp.yes{left:16px;color:var(--good);transform:rotate(-12deg)}.stamp.no{right:16px;color:var(--bad);transform:rotate(12deg)}
+.lean-yes .stamp.yes,.lean-no .stamp.no{opacity:1}
+.sw-btn{width:60px;height:60px;border-radius:50%;border:2px solid var(--line);background:var(--surface);font-size:1.3rem;font-weight:800}
+.sw-btn.yes{color:var(--good);border-color:var(--good)}.sw-btn.no{color:var(--bad);border-color:var(--bad)}
+.fotos{display:grid;gap:10px}
+.foto{display:grid;grid-template-columns:110px 1fr;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px;align-items:start}
+.foto img{width:110px;height:110px;object-fit:cover;border-radius:8px;background:var(--surface-2)}
+@media (max-width:420px){.foto{grid-template-columns:84px 1fr}.foto img{width:84px;height:84px}}
+.vh{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden}
+.tile-ic{width:40px;height:40px;display:grid;place-items:center;color:var(--accent)}
+.badge-pts{font-size:.72rem;font-weight:700;color:var(--accent);border:1px solid var(--accent);border-radius:6px;padding:1px 5px;white-space:nowrap}
+
+/* Chat */
+.chat{display:grid;gap:10px;margin-top:12px}
+.msg{max-width:88%;padding:10px 12px;border-radius:14px;white-space:pre-wrap;overflow-wrap:anywhere}
+.msg.me{justify-self:end;background:var(--accent);color:var(--accent-ink);border-bottom-right-radius:4px}
+.msg.ai{justify-self:start;background:var(--surface);border:1px solid var(--line);border-bottom-left-radius:4px}
+.msg.ai a{color:var(--accent);font-weight:600}
+.msg .acts{margin-top:6px;font-size:.78rem;color:var(--muted)}
+.suggest{display:flex;gap:6px;flex-wrap:wrap}
+.suggest button{background:var(--surface);border:1px solid var(--line);border-radius:99px;padding:6px 11px;font-size:.85rem}
+.composer{position:fixed;left:0;right:0;bottom:calc(64px + env(safe-area-inset-bottom,0px));z-index:20;background:var(--bg);border-top:1px solid var(--line);
+  padding:10px max(16px,env(safe-area-inset-right,0px)) 10px max(16px,env(safe-area-inset-left,0px))}
+.composer form{max-width:760px;margin:0 auto;display:flex;gap:8px}
+
+/* Settings */
+.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+label.f{display:grid;gap:4px;font-size:.82rem;color:var(--muted);font-weight:600}
+.saved{font-size:.85rem;color:var(--good)}
+
+/* Tabs */
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--surface);border-top:1px solid var(--line);
+  padding:6px max(16px,env(safe-area-inset-right,0px)) calc(6px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.tabs-in{max-width:520px;margin:0 auto;display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
+.tab{background:none;border:0;border-radius:10px;padding:6px 4px;display:grid;justify-items:center;gap:2px;font-size:.78rem;color:var(--muted);font-weight:600}
+.tab svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.tab[aria-selected="true"]{color:var(--accent);background:var(--surface-2)}
+.stack{display:grid;gap:12px}
+
+/* zelfstandige app */
+.who-wrap{margin-top:6px;display:flex;align-items:center;gap:6px;font-size:.82rem;color:var(--muted)}
+.who-wrap select{width:auto;padding:5px 8px;border-radius:99px;font-weight:600;color:var(--ink)}
+.gate{position:fixed;inset:0;z-index:60;background:var(--bg);display:grid;place-items:center;overflow:auto;
+  padding:calc(24px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) calc(24px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.gate-in{width:min(100%,440px);display:grid;gap:14px}
+.gate .err{color:var(--bad);font-size:.88rem;min-height:1.2em}
+.foto-open{padding:0;border:0;background:none;border-radius:8px;overflow:hidden;width:110px;height:110px}
+@media (max-width:420px){.foto-open{width:84px;height:84px}}
+.viewer{position:fixed;inset:0;z-index:70;background:rgba(5,8,6,.92);display:grid;place-items:center;padding:16px}
+.viewer img{max-width:100%;max-height:calc(100vh - 100px);object-fit:contain;border-radius:8px}
+.viewer .x{position:absolute;top:calc(12px + env(safe-area-inset-top,0px));right:calc(12px + env(safe-area-inset-right,0px))}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <!-- HUIS -->
+  <section id="v-huis" class="stack">
+    <div class="top">
+      <div>
+        <div class="eyebrow" id="today">Vandaag</div>
+        <h1 id="hh-name">Ons huis</h1>
+        <div class="who-wrap" id="who-wrap" hidden><label for="who-sel">Ik ben</label><select id="who-sel"></select></div>
+      </div>
+      <div class="glow" title="Hoe goed alles bijgehouden is">
+        <svg width="46" height="46" viewBox="0 0 46 46" aria-hidden="true"><circle class="ring-bg" cx="23" cy="23" r="19" fill="none" stroke-width="5"/><circle id="glow-ring" cx="23" cy="23" r="19" fill="none" stroke-width="5" stroke-linecap="round" transform="rotate(-90 23 23)"/></svg>
+        <div><div class="glow-num" id="glow-num">–</div><div class="eyebrow">huisgloed</div></div>
+      </div>
+    </div>
+    <div class="clockline" id="clockline"></div>
+    <div class="weather-pick" id="weather-pick" hidden></div>
+    <div id="banner" class="banner">Even het huis ophalen…</div>
+
+    <div class="scene-box">
+      <svg class="scene" id="scene" viewBox="0 0 420 410" role="img" aria-label="Opengewerkt poppenhuis met zolder, slaapkamer, badkamer, woonkamer, hal en keuken, plus tuin, schuur met kluis, auto en brievenbus. Tik op een voorwerp.">
+        <defs>
+          <linearGradient id="skyg" x1="0" y1="0" x2="0" y2="1"><stop id="sky1" offset="0" stop-color="#8fc7ea"/><stop id="sky2" offset="1" stop-color="#dff1f7"/></linearGradient>
+          <pattern id="mud" width="8" height="8" patternUnits="userSpaceOnUse"><circle cx="2" cy="3" r="1.6" fill="#6b5536"/><circle cx="6" cy="6" r="1.1" fill="#7a6142"/></pattern>
+          <pattern id="smudge" width="10" height="10" patternUnits="userSpaceOnUse"><circle cx="3" cy="3" r="2.2" fill="#7d7660"/><circle cx="8" cy="8" r="1.4" fill="#8d8670"/></pattern>
+          <pattern id="tiles" width="8" height="8" patternUnits="userSpaceOnUse"><rect width="8" height="8" fill="#cfe7ea"/><path d="M0 .5H8M.5 0V8" stroke="#b5d3d8" stroke-width="1"/></pattern>
+          <pattern id="wood" width="12" height="6" patternUnits="userSpaceOnUse"><rect width="12" height="6" fill="#c69a6a"/><path d="M0 5.5H12M6 0v6" stroke="#ad8355" stroke-width="1"/></pattern>
+          <radialGradient id="lampglow"><stop offset="0" stop-color="#ffd98a" stop-opacity=".75"/><stop offset="1" stop-color="#ffd98a" stop-opacity="0"/></radialGradient>
+        </defs>
+        <!-- sky -->
+        <rect width="420" height="410" fill="url(#skyg)"/>
+        <g id="stars" opacity="0" fill="#fff">
+          <circle class="star" cx="30" cy="30" r="1.2"/><circle class="star" cx="90" cy="18" r="1"/><circle class="star" cx="150" cy="40" r="1.3"/><circle class="star" cx="250" cy="22" r="1"/><circle class="star" cx="300" cy="50" r="1.2"/><circle class="star" cx="380" cy="80" r="1"/><circle class="star" cx="360" cy="20" r="1.3"/><circle class="star" cx="60" cy="90" r="1"/><circle class="star" cx="210" cy="14" r="1"/>
+        </g>
+        <circle id="sun" cx="80" cy="60" r="16" fill="#ffd76a"/>
+        <g id="moon" opacity="0"><circle cx="372" cy="46" r="13" fill="#f3efd8"/><circle cx="378" cy="42" r="11" fill="url(#skyg)"/></g>
+        <g id="clouds" opacity="0" fill="#ffffff">
+          <g class="cloud"><ellipse cx="90" cy="58" rx="30" ry="11"/><ellipse cx="110" cy="50" rx="20" ry="12"/></g>
+          <g class="cloud" style="animation-delay:-12s"><ellipse cx="320" cy="76" rx="34" ry="11"/><ellipse cx="300" cy="68" rx="18" ry="11"/></g>
+        </g>
+        <g id="rain" opacity="0" stroke="#7fa6c4" stroke-width="1.2" stroke-linecap="round"></g>
+        <g id="snow" opacity="0" fill="#ffffff"></g>
+        <rect id="bolt" class="bolt" width="420" height="410" fill="#ffffff" opacity="0" style="display:none"/>
+
+        <!-- TUIN (behind house): tree + hedge -->
+        <g class="spot outside" data-spot="tuin">
+          <rect x="0" y="300" width="420" height="40" fill="#9fbf8a" opacity=".5"/>
+          <rect x="26" y="248" width="9" height="90" rx="3" fill="#7a5a3c"/>
+          <g id="branches" stroke="#7a5a3c" stroke-width="3" stroke-linecap="round" fill="none"><path d="M30 270 L10 240 M30 262 L52 232 M30 250 L28 212 M20 254 L4 252 M44 244 L60 246"/></g>
+          <g id="crown"><circle cx="30" cy="232" r="32"/><circle cx="54" cy="252" r="20"/><circle cx="8" cy="254" r="18"/></g>
+          <g id="blossom" fill="#f7c6d9"></g>
+          <rect x="40" y="316" width="36" height="20" rx="9" fill="#4f8a3c" id="hedge"/>
+        </g>
+
+        <!-- SCHUUR + KLUIS -->
+        <g class="spot outside" data-spot="kluis">
+          <path d="M332 292 L372 268 L412 292 Z" fill="#7a4a3a"/>
+          <rect x="338" y="290" width="68" height="44" fill="#a88e6e"/>
+          <rect x="343" y="295" width="58" height="37" fill="#3c3530"/>
+          <rect x="356" y="301" width="32" height="29" rx="3" fill="#6b7178"/>
+          <rect x="358" y="303" width="28" height="25" rx="2" fill="none" stroke="#50555b" stroke-width="1"/>
+          <circle cx="372" cy="315" r="6.5" fill="#9aa1a8" stroke="#4c5157" stroke-width="2"/>
+          <path d="M372 310 v5" stroke="#4c5157" stroke-width="2"/>
+          <circle id="vaultglow" cx="372" cy="315" r="17" fill="#ffd76a" opacity="0"/>
+          <g id="cobweb" opacity="0" stroke="#d8d8d8" stroke-width=".8" fill="none"><path d="M343 295 l12 12 M343 295 l15 4 M343 295 l4 15 M346 298 q4 -1 5 4 M349 302 q4 -1 6 3"/></g>
+        </g>
+
+        <!-- HOUSE -->
+        <g id="house">
+          <!-- DAK -->
+          <g class="spot" data-spot="dak">
+            <rect x="252" y="56" width="18" height="44" fill="#8a4637"/>
+            <rect x="249" y="52" width="24" height="6" fill="#6f382c"/>
+            <path d="M64 136 L200 34 L336 136 Z" fill="#8a4637"/>
+            <g id="moss" opacity="0" fill="#6f8f45"><ellipse cx="120" cy="114" rx="11" ry="3.5"/><ellipse cx="290" cy="112" rx="10" ry="3.5"/><ellipse cx="170" cy="74" rx="7" ry="3"/><ellipse cx="236" cy="70" rx="7" ry="3"/></g>
+            <path id="roofsnow" opacity="0" d="M64 136 L200 34 L336 136 L330 136 L200 42 L70 136Z" fill="#ffffff"/>
+            <rect x="60" y="131" width="280" height="6" rx="3" fill="#8b9096"/>
+            <g id="gleaves" opacity="0" fill="#b4793a"><ellipse cx="70" cy="130" rx="6" ry="2.5"/><ellipse cx="332" cy="130" rx="6" ry="2.5"/></g>
+            <rect x="72" y="136" width="5" height="198" fill="#8b9096"/><rect x="323" y="136" width="5" height="198" fill="#8b9096"/>
+            <g id="drips" opacity="0" fill="#6fb3d6"><circle class="drop" cx="64" cy="141" r="2.4"/><circle class="drop" cx="336" cy="141" r="2.4"/></g>
+          </g>
+          <!-- frame -->
+          <rect x="80" y="130" width="240" height="204" fill="#8a6a50"/>
+          <!-- ZOLDER / CV -->
+          <g class="spot" data-spot="cv">
+            <path d="M92 128 L200 50 L308 128 Z" fill="#d9c6a8"/>
+            <rect x="108" y="110" width="22" height="18" fill="#b98e5c"/><rect x="124" y="100" width="18" height="28" fill="#c9a06c"/><path d="M108 116h22M124 108h18" stroke="#9c7547"/>
+            <rect x="160" y="96" width="14" height="32" fill="#c96c4e" opacity=".85"/>
+            <path d="M232 128 v-6 M244 128 v-6" stroke="#b0b5ba" stroke-width="2"/>
+            <rect x="226" y="92" width="26" height="32" rx="3" fill="#f4f4f2" stroke="#c4c7cb"/>
+            <rect x="231" y="98" width="16" height="7" rx="1.5" fill="#2e3a40"/>
+            <circle id="cvlight" cx="239" cy="101.5" r="2.2" fill="#5fd17a"/>
+            <circle cx="234" cy="114" r="2" fill="#c4c7cb"/><circle cx="244" cy="114" r="2" fill="#c4c7cb"/>
+          </g>
+          <!-- SLAAPKAMER -->
+          <rect x="86" y="136" width="112" height="88" fill="#dfe4f0"/>
+          <rect class="glass" x="104" y="146" width="36" height="28" fill="#9fcbe4" stroke="#fff" stroke-width="2.5"/>
+          <path d="M122 146v28" stroke="#fff" stroke-width="2"/>
+          <g class="spot" data-spot="bed">
+            <rect x="90" y="192" width="7" height="32" rx="2" fill="#8a6a50"/>
+            <rect x="94" y="204" width="72" height="12" rx="2" fill="#f4f1ea"/>
+            <rect x="92" y="214" width="76" height="8" rx="2" fill="#8a6a50"/>
+            <ellipse cx="106" cy="203" rx="9" ry="4.5" fill="#ffffff" stroke="#d7d2c8"/>
+            <rect id="duvet" x="114" y="199" width="54" height="16" rx="4" fill="#7fa6d6"/>
+            <g id="rumple" opacity="0" stroke="#4f6f99" stroke-width="1.4" fill="none"><path d="M116 204 q6 -5 12 0 t12 0 t12 0 t12 0"/><path d="M118 210 q6 -4 12 0 t12 0 t12 0"/></g>
+            <g id="floormess" opacity="0"><rect x="140" y="219" width="14" height="5" rx="2" fill="#c45d5d" transform="rotate(-8 147 221)"/><path d="M124 222 h7 v-4 h3 v6 h-10z" fill="#5d7fc4"/></g>
+          </g>
+          <g class="spot" data-spot="kast">
+            <rect x="172" y="158" width="24" height="66" fill="#a8825a"/>
+            <path d="M184 160v62" stroke="#8a6a50" stroke-width="1.2"/>
+            <circle cx="181" cy="192" r="1.3" fill="#5a4330"/><circle cx="187" cy="192" r="1.3" fill="#5a4330"/>
+            <g id="kastmess" opacity="0"><path d="M178 222 h6 v-6 h3 v9 h-9z" fill="#e0e0e0"/><path d="M188 224 h5 v-5 h2.5 v8 h-7.5z" fill="#c45d5d"/><path d="M171 172 l5 -2 v14 l-5 2z" fill="#7aa36b"/></g>
+          </g>
+          <!-- BADKAMER -->
+          <g class="spot" data-spot="badkamer">
+            <rect x="202" y="136" width="112" height="88" fill="#e3f1f2"/>
+            <rect x="202" y="178" width="112" height="46" fill="url(#tiles)"/>
+            <path d="M214 204 V152 q0 -6 8 -6 h6" stroke="#9aa5ab" stroke-width="2.5" fill="none"/><path d="M226 146 h8 l-2 5 h-6z" fill="#9aa5ab"/>
+            <rect x="206" y="202" width="58" height="16" rx="5" fill="#ffffff" stroke="#c8d3d6"/>
+            <rect x="210" y="217" width="4" height="6" fill="#c8d3d6"/><rect x="256" y="217" width="4" height="6" fill="#c8d3d6"/>
+            <rect x="290" y="190" width="18" height="14" rx="2" fill="#ffffff" stroke="#c8d3d6"/>
+            <path d="M284 204 h22 q0 12 -10 16 h-6 q-6 -6 -6 -16z" fill="#ffffff" stroke="#c8d3d6"/>
+            <rect x="274" y="148" width="28" height="24" rx="2" fill="#f4f4f2" stroke="#c8d3d6"/>
+            <rect x="277" y="151" width="22" height="18" fill="#cfe2ea"/>
+            <rect x="266" y="172" width="9" height="24" rx="2" fill="#e68f6d"/>
+            <rect id="bathgrime" x="202" y="178" width="112" height="46" fill="url(#smudge)" opacity="0"/>
+            <g id="bathspark" opacity="0" fill="#fff"><path class="spark" d="M240 186 l1.5 4 4 1.5 -4 1.5 -1.5 4 -1.5 -4 -4 -1.5 4 -1.5z"/><path class="spark" d="M296 160 l1.2 3 3 1.2 -3 1.2 -1.2 3 -1.2 -3 -3 -1.2 3 -1.2z"/></g>
+          </g>
+          <!-- WOONKAMER -->
+          <g class="spot" data-spot="woonkamer">
+            <rect x="86" y="234" width="88" height="96" fill="#f1e5cd"/>
+            <rect class="glass" x="98" y="244" width="40" height="30" fill="#9fcbe4" stroke="#fff" stroke-width="2.5"/>
+            <path d="M118 244v30M98 259h40" stroke="#fff" stroke-width="2"/>
+            <rect id="wingrime" x="99" y="245" width="38" height="28" fill="url(#smudge)" opacity="0"/>
+            <circle cx="150" cy="238" r="4" fill="#ffffff" stroke="#c9c2b2"/>
+            <rect x="86" y="326" width="88" height="4" fill="url(#wood)"/>
+            <ellipse cx="124" cy="327" rx="34" ry="2.6" fill="#c4746b"/>
+            <rect x="92" y="296" width="56" height="16" rx="4" fill="#4f7d74"/>
+            <rect x="92" y="308" width="56" height="14" rx="3" fill="#5e8f85"/>
+            <rect x="89" y="302" width="7" height="22" rx="3" fill="#4f7d74"/><rect x="144" y="302" width="7" height="22" rx="3" fill="#4f7d74"/>
+            <rect x="161" y="276" width="2.5" height="50" fill="#5a4a3a"/><path d="M154 278 h16 l-3 -12 h-10z" fill="#e8c77a"/>
+            <circle id="lamp1" cx="162" cy="282" r="26" fill="url(#lampglow)" opacity="0"/>
+            <g id="dust" opacity="0" fill="#9b958a"><circle cx="100" cy="326" r="2.4"/><circle cx="156" cy="327" r="2"/><circle cx="168" cy="325" r="2.6"/><circle cx="134" cy="325" r="1.6"/></g>
+            <g id="webwk" opacity="0" stroke="#bdb6a6" stroke-width=".8" fill="none"><path d="M86 234 l12 12 M86 234 l15 3 M86 234 l3 15 M89 237 q4 -1 5 4 M92 241 q4 -1 6 3"/></g>
+          </g>
+          <!-- HAL -->
+          <rect x="178" y="234" width="36" height="96" fill="#e9e1d4"/>
+          <path d="M178 330 h8 v-12 h8 v-12 h8 v-12 h8 v-12 h4" fill="none" stroke="#8a6a50" stroke-width="2.5"/>
+          <g class="spot" data-spot="kalender">
+            <rect x="182" y="242" width="28" height="26" rx="2" fill="#ffffff" stroke="#c9c2b2"/>
+            <rect x="182" y="242" width="28" height="7" rx="2" fill="#c94c3c"/>
+            <text id="calnum" x="196" y="264" text-anchor="middle" font-family="Figtree, system-ui, sans-serif" font-weight="700" font-size="12" fill="#1d2721">8</text>
+            <circle id="calbadge" cx="210" cy="243" r="4.5" fill="#d9703f" opacity="0"/>
+          </g>
+          <g class="spot" data-spot="hal">
+            <rect x="180" y="324" width="32" height="6" rx="1" fill="#7f6a4e"/>
+            <g id="postpile" opacity="0"><rect x="184" y="320" width="13" height="7" fill="#fbf7ee" stroke="#c9c2b2" transform="rotate(-10 190 323)"/><rect x="192" y="319" width="12" height="7" fill="#eef4ff" stroke="#b8c2d4" transform="rotate(8 198 322)"/><rect x="187" y="316" width="12" height="6" fill="#fff4e0" stroke="#cdbb98" transform="rotate(-3 193 319)"/></g>
+          </g>
+          <!-- KEUKEN -->
+          <rect x="218" y="234" width="96" height="96" fill="#f2eacb"/>
+          <rect x="218" y="326" width="96" height="4" fill="url(#wood)"/>
+          <g class="spot" data-spot="keuken">
+            <path d="M240 242 h26 l5 12 h-36z" fill="#b8bec4"/>
+            <rect x="250" y="234" width="6" height="8" fill="#b8bec4"/>
+            <g id="grease" opacity="0" fill="#8b8b8b"><ellipse cx="246" cy="262" rx="6" ry="3" opacity=".5"/><ellipse cx="258" cy="268" rx="7" ry="3" opacity=".4"/></g>
+            <rect x="222" y="302" width="62" height="24" fill="#6f8ea0"/>
+            <rect x="220" y="298" width="66" height="5" fill="#e6dfd2"/>
+            <path d="M233 306v18M253 306v18M273 306v18" stroke="#5c7a8a"/>
+            <rect x="236" y="294" width="8" height="4" fill="#3b3f43"/><rect x="226" y="294" width="8" height="4" fill="#3b3f43"/>
+            <g id="dishes"></g>
+            <circle id="lamp2" cx="266" cy="262" r="30" fill="url(#lampglow)" opacity="0"/>
+          </g>
+          <g class="spot" data-spot="koelkast">
+            <rect x="288" y="256" width="24" height="70" rx="4" fill="#f4f4f2" stroke="#c8ccd0"/>
+            <path d="M288 280 h24" stroke="#c8ccd0"/>
+            <rect x="291" y="262" width="2" height="12" rx="1" fill="#9aa1a8"/><rect x="291" y="286" width="2" height="18" rx="1" fill="#9aa1a8"/>
+            <rect id="fridgenote" x="298" y="284" width="10" height="11" fill="#f2d35e" opacity="0" transform="rotate(4 303 289)"/>
+            <circle cx="303" cy="263" r="1.8" fill="#d9703f"/><circle cx="306" cy="268" r="1.8" fill="#2c6e5b"/>
+          </g>
+        </g>
+
+        <!-- WHOLE HOUSE MOOD -->
+        <path id="houseshade" d="M64 136 L200 34 L336 136 L320 136 V334 H80 V136Z" fill="#5f5b52" opacity="0" pointer-events="none"/>
+        <g id="smoke" opacity="0" fill="#e9e6e0" pointer-events="none"><circle class="puff" cx="261" cy="46" r="5"/><circle class="puff" cx="261" cy="46" r="6"/><circle class="puff" cx="261" cy="46" r="4.5"/></g>
+        <g id="bunting" opacity="0" pointer-events="none">
+          <path d="M84 139 Q200 152 316 139" stroke="#7a5a3c" stroke-width="1" fill="none"/>
+          <g id="flags"></g>
+        </g>
+        <!-- LAWN & FRONT -->
+        <g class="spot outside" data-spot="tuin">
+          <rect id="lawn" x="0" y="334" width="420" height="76" fill="#5fa34a"/>
+          <rect id="lawnsnow" x="0" y="334" width="420" height="76" fill="#f4f8fb" opacity="0"/>
+          <rect x="84" y="334" width="92" height="8" rx="3" fill="#7a5a3c"/>
+          <rect x="216" y="334" width="102" height="8" rx="3" fill="#7a5a3c"/>
+          <g id="flowers"></g>
+          <g id="weeds" opacity="0" stroke="#7d8a3a" stroke-width="2" fill="none">
+            <path d="M18 368 l3-10 2 10 3-12 2 12"/><path d="M92 392 l3-9 2 9 3-11 2 11"/><path d="M262 396 l3-9 2 9 3-11 2 11"/><path d="M58 400 l2-7 2 7 2-9 2 9"/>
+          </g>
+        </g>
+        <path class="outside" d="M182 334 L214 334 L226 410 L170 410 Z" fill="#cfc8b8"/>
+        <path class="outside" d="M330 334 L420 334 L420 410 L322 410 Z" fill="#c4bdae"/>
+        <!-- BRIEVENBUS (hal) -->
+        <g class="spot outside" data-spot="hal">
+          <rect x="160" y="346" width="4" height="30" fill="#5a4a3a"/>
+          <rect x="148" y="332" width="28" height="17" rx="7" fill="#c94c3c"/>
+          <rect id="flag" x="174" y="324" width="3" height="13" fill="#f1c84b"/>
+          <g id="letters" opacity="0"><rect x="153" y="326" width="15" height="8" fill="#fbf7ee" stroke="#c9c2b2" transform="rotate(-12 160 330)"/></g>
+        </g>
+        <!-- AUTO -->
+        <g class="spot outside" data-spot="auto" transform="translate(328 352)">
+          <path d="M6 26 Q6 14 18 12 L30 2 Q34 0 40 0 L64 0 Q70 0 74 6 L82 14 Q90 16 90 26 L90 32 L6 32 Z" fill="#3f78b5"/>
+          <path d="M33 5 L40 3 L54 3 L54 13 L26 13 Z M58 3 L66 3 Q70 4 74 12 L58 13 Z" fill="#a9d4e6"/>
+          <rect id="cardirt" x="6" y="14" width="84" height="18" fill="url(#mud)" opacity="0"/>
+          <circle cx="24" cy="33" r="8" fill="#2a2e33"/><circle cx="24" cy="33" r="3" fill="#9aa1a8"/>
+          <circle cx="72" cy="33" r="8" fill="#2a2e33"/><circle cx="72" cy="33" r="3" fill="#9aa1a8"/>
+          <path id="carshine" d="M14 18 Q30 15 46 17" stroke="#ffffff" stroke-width="2" fill="none" opacity="0" stroke-linecap="round"/>
+        </g>
+        <g id="leaves" opacity="0"></g>
+        <g id="markers" pointer-events="none"></g>
+      </svg>
+    </div>
+
+    <div class="zones" id="zones"></div>
+    <div class="card" id="attention"></div>
+    <div class="card samen" id="samen"></div>
+    <div class="card stack" id="wheelcard"></div>
+  </section>
+
+  <!-- LIJST -->
+  <section id="v-lijst" class="stack" hidden>
+    <div class="top"><div><div class="eyebrow">Boodschappen</div><h1>Boodschappenlijst</h1></div></div>
+    <div id="lijst-body"></div>
+  </section>
+
+  <!-- INSTELLINGEN -->
+  <section id="v-inst" class="stack" hidden>
+    <div class="top"><div><div class="eyebrow">Instellingen</div><h1>Over ons</h1></div></div>
+    <form class="card stack" id="f-me">
+      <div class="row" style="justify-content:space-between"><h2>Mijn profiel</h2><span class="saved" id="me-saved" hidden>Opgeslagen</span></div>
+      <div class="form-grid">
+        <label class="f">Naam<input type="text" id="p-naam" autocomplete="given-name"></label>
+        <label class="f">Verjaardag<input type="date" id="p-verjaardag"></label>
+        <label class="f">Kledingmaat<input type="text" id="p-kleding" placeholder="bijv. M of 38"></label>
+        <label class="f">Sokmaat<input type="text" id="p-sok" placeholder="bijv. 39–42"></label>
+        <label class="f">Schoenmaat<input type="text" id="p-schoen" placeholder="bijv. 40"></label>
+        <label class="f">Eten en dieet<input type="text" id="p-eten" placeholder="bijv. vegetarisch, geen koriander"></label>
+        <label class="f">Favoriete merken en winkels<input type="text" id="p-merken" placeholder="bijv. Bamigo, HEMA"></label>
+        <label class="f">Cadeau-ideeën voor mij<input type="text" id="p-wens" placeholder="bijv. boeken, plantjes, een etentje"></label>
+      </div>
+      <label class="f">Verder handig om te weten<textarea id="p-overig" rows="3" placeholder="bijv. werkt ma–do, sport op dinsdag, houdt niet van strijken"></textarea></label>
+      <div><button class="btn" type="submit">Profiel opslaan</button></div>
+    </form>
+    <div class="card stack" id="partner-card"></div>
+    <form class="card stack" id="f-hh">
+      <div class="row" style="justify-content:space-between"><h2>Ons huishouden</h2><span class="saved" id="hh-saved" hidden>Opgeslagen</span></div>
+      <div class="form-grid">
+        <label class="f">Naam van het huis<input type="text" id="h-naam" placeholder="Ons huis"></label>
+      </div>
+      <label class="f">Over het huis<textarea id="h-over" rows="2" placeholder="bijv. rijtjeshuis met tuin op het zuiden, cv-ketel uit 2015, Toyota Yaris"></textarea></label>
+      <div><button class="btn" type="submit">Huishouden opslaan</button></div>
+    </form>
+    <div class="card stack" id="rw-settings">
+      <h2>Beloningen</h2>
+      <form class="stack" id="f-rwcfg">
+        <div class="form-grid">
+          <label class="f">Punten voor een gezamenlijke beloning<input type="number" id="c-samen" min="10" max="5000"></label>
+          <label class="f">Ieder draagt minstens bij (%)<input type="number" id="c-aandeel" min="0" max="50"></label>
+          <label class="f">Punten voor een eigen beloning<input type="number" id="c-solo" min="10" max="5000"></label>
+        </div>
+        <div class="row"><button class="btn ghost small" type="submit">Spelregels opslaan</button><span class="saved" id="cfg-saved" hidden>Opgeslagen</span></div>
+      </form>
+      <div id="rw-list"></div>
+      <form class="stack" id="f-rw">
+        <h3>Beloning toevoegen</h3>
+        <input type="text" id="rw-titel" placeholder="Bijv. ontbijt op bed" required aria-label="Beloning">
+        <div class="row"><select id="rw-voor" style="flex:1 1 200px" aria-label="Voor wie"></select>
+          <label class="row muted" style="gap:6px;font-size:.85rem"><input type="checkbox" id="rw-herhaal" checked> mag vaker gewonnen worden</label></div>
+        <div><button class="btn" type="submit">Toevoegen</button></div>
+      </form>
+      <div class="suggest" id="rw-sugg"></div>
+    </div>
+    <form class="card stack" id="f-bew">
+      <div class="row" style="justify-content:space-between"><h2>Bewoners</h2><span class="saved" id="bw-saved" hidden>Opgeslagen</span></div>
+      <div class="form-grid"><label class="f">Bewoner 1<input type="text" id="bw-1"></label><label class="f">Bewoner 2<input type="text" id="bw-2"></label></div>
+      <div><button class="btn ghost small" type="submit">Namen opslaan</button></div>
+    </form>
+    <form class="card stack" id="f-plaats">
+      <h2>Woonplaats voor het weer</h2>
+      <p class="muted" id="pl-now" style="margin:0"></p>
+      <div class="row"><input type="text" id="pl-q" class="grow" placeholder="Bijv. Maastricht" aria-label="Woonplaats"><button class="btn" type="submit">Zoeken</button></div>
+      <div id="pl-res" class="muted" aria-live="polite"></div>
+      <p class="muted" style="margin:0;font-size:.82rem">Het weer komt van Open-Meteo, gratis en zonder account. Sneeuw, vorst en storm maken de bijbehorende taken vanzelf wakker.</p>
+    </form>
+    <div class="card stack">
+      <h2>Dit apparaat</h2>
+      <p class="muted" id="mode-txt" style="margin:0"></p>
+      <div><button class="btn ghost small" id="code-reset">Huiscode opnieuw invullen</button></div>
+    </div>
+  </section>
+</div>
+
+
+
+<div class="scrim" id="scrim" hidden></div>
+<div class="sheet" id="sheet" hidden role="dialog" aria-modal="true" aria-labelledby="sheet-title"><div class="sheet-in" id="sheet-in"></div></div>
+
+<nav class="tabs" aria-label="Weergaven"><div class="tabs-in" role="tablist">
+  <button class="tab" role="tab" data-v="huis" aria-selected="true"><svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg>Huis</button>
+  <button class="tab" role="tab" data-v="lijst" aria-selected="false"><svg viewBox="0 0 24 24"><path d="M5 7h14l-1.5 11a2 2 0 0 1-2 1.7h-7a2 2 0 0 1-2-1.7z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg>Lijst</button>
+  <button class="tab" role="tab" data-v="inst" aria-selected="false"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4.5-6 8-6s7 2 8 6"/></svg>Over ons</button>
+</div></nav>
+
+
+<div class="gate" id="lock" hidden>
+  <form class="gate-in card" id="f-lock">
+    <div class="eyebrow">Ons Huis</div>
+    <h1>Huiscode</h1>
+    <p class="muted" style="margin:0">Vul de code van jullie huis in. Dit apparaat onthoudt hem, dus dit hoeft maar één keer.</p>
+    <input type="password" id="lock-code" autocomplete="current-password" aria-label="Huiscode" required>
+    <div class="err" id="lock-err" aria-live="polite"></div>
+    <div><button class="btn" type="submit">Naar binnen</button></div>
+  </form>
+</div>
+
+<div class="gate" id="setup" hidden>
+  <form class="gate-in card" id="f-setup" novalidate>
+    <div class="eyebrow">Eerste keer</div>
+    <h1>Ons huis instellen</h1>
+    <div class="form-grid">
+      <label class="f">Jouw naam<input type="text" id="su-1" autocomplete="given-name"></label>
+      <label class="f">Naam van je partner<input type="text" id="su-2"></label>
+    </div>
+    <label class="f">Naam van het huis<input type="text" id="su-huis" placeholder="Ons huis"></label>
+    <div class="stack" style="gap:6px">
+      <label class="f" for="su-plaats">Woonplaats (voor het weer)</label>
+      <div class="row"><input type="text" id="su-plaats" class="grow" placeholder="Bijv. Maastricht"><button class="btn ghost" type="button" id="su-zoek">Zoeken</button></div>
+      <div id="su-plaats-res" class="muted" aria-live="polite"></div>
+    </div>
+    <label class="row muted" style="gap:8px"><input type="checkbox" id="su-seed" checked> Begin met de startset van terugkerende taken</label>
+    <div class="err" id="su-err" aria-live="polite"></div>
+    <div><button class="btn" type="submit" id="su-go">Klaar, naar het huis</button></div>
+  </form>
+</div>
+
+<div class="gate" id="who" hidden>
+  <div class="gate-in card">
+    <div class="eyebrow">Dit apparaat</div>
+    <h1>Wie ben jij?</h1>
+    <p class="muted" style="margin:0">Zo weet het huis wie er punten verdient. Je kunt het later bovenaan wisselen.</p>
+    <div class="row" id="who-btns"></div>
+  </div>
+</div>
+
+<div class="viewer" id="viewer" hidden role="dialog" aria-label="Foto">
+  <img id="viewer-img" alt="Foto">
+  <button class="x" id="viewer-x" aria-label="Sluiten">×</button>
+</div>
+
+<script src="config.js"></script>
+<script src="store.js"></script>
+<script src="seed.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
