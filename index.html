@@ -223,6 +223,10 @@ details.prep summary{cursor:pointer;font-size:.82rem;color:var(--accent);font-we
 .cal-dots i{width:6px;height:6px;border-radius:50%;display:block}
 #v-kalender .top{align-items:center}
 #cal-title{text-transform:capitalize}
+.prep-acts{display:inline-flex;gap:6px;align-items:center;flex:none;flex-wrap:wrap;justify-content:flex-end}
+.prep-acts.ask{flex:1 1 100%;justify-content:flex-start;margin-top:4px}
+.att-list li:has(.prep-acts.ask),.list li:has(.prep-acts.ask),.prep-list li:has(.prep-acts.ask){flex-wrap:wrap}
+.att-list li > .link{flex:1;min-width:0}
 .badge-pts{font-size:.72rem;font-weight:700;color:var(--accent);border:1px solid var(--accent);border-radius:6px;padding:1px 5px;white-space:nowrap}
 
 /* Chat */
