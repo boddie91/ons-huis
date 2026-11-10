@@ -229,6 +229,15 @@ details.prep summary{cursor:pointer;font-size:.82rem;color:var(--accent);font-we
 .att-list li > .link{flex:1;min-width:0}
 details.vv{flex:1 1 100%}
 details.vv summary{cursor:pointer;font-size:.82rem;color:var(--accent);font-weight:600}
+details.hoe{grid-column:1/-1}
+details.hoe summary{cursor:pointer;font-size:.82rem;color:var(--accent);font-weight:600;list-style:none}
+details.hoe summary::-webkit-details-marker{display:none}
+.steps{margin:0;padding-left:20px;display:grid;gap:4px;font-size:.92rem}
+.links{list-style:none;margin:0;padding:0;display:grid;gap:4px;font-size:.9rem}
+.links a{color:var(--accent);font-weight:600;overflow-wrap:anywhere}
+.links.auto a{font-weight:500}
+.links.auto a::before{content:"↗ ";color:var(--muted)}
+textarea{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 10px;width:100%;resize:vertical}
 .badge-pts{font-size:.72rem;font-weight:700;color:var(--accent);border:1px solid var(--accent);border-radius:6px;padding:1px 5px;white-space:nowrap}
 
 /* Chat */
