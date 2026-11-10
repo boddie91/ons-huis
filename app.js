@@ -67,7 +67,25 @@ function events(){
   S.afspraken.forEach(a=>{ if(/^\d{4}-\d{2}-\d{2}$/.test(a.datum||'')){ const [jj,mm,dd]=a.datum.split('-').map(Number); out.push({key:'af-'+a.id,afId:a.id,titel:a.titel,date:new Date(jj,mm-1,dd),type:'afspraak',rem:a.voorbereiding?3:0,actie:a.voorbereiding||'',needs:!!a.voorbereiding}); }});
   return out.filter(e=>{const n=daysUntil(e.date); return n>=0&&n<=400;}).sort((a,b)=>a.date-b.date);
 }
-function reminders(){ return events().filter(e=>e.needs&&!S.geregeld[e.key]&&daysUntil(e.date)<=e.rem); }
+/* voorbereiding: subtaken per gebeurtenis, elk met eigen termijn en eventueel een vaste persoon */
+const DEFAULT_PREP={
+  'Sinterklaas':[['Cadeaus kopen',21],['Surprise maken',10],['Gedichten schrijven',7],['Cadeaus inpakken',3]],
+  'Eerste kerstdag':[['Kerstboom halen',18],['Kerstmenu bedenken',14],['Kerstboodschappen doen',3]],
+  'Oudejaarsavond':[['Oliebollen bestellen of bakken',7],['Vuurwerk en drankjes regelen',5]],
+  'Moederdag':[['Cadeau regelen',7],['Kaartje schrijven',3]],
+  'Vaderdag':[['Cadeau regelen',7],['Kaartje schrijven',3]]
+};
+function tplKey(e){ return e.type==='feestdag'?'fd-'+e.titel:e.type==='afspraak'?'af-'+e.afId:'dag-'+e.dagId; }
+const prepId=k=>k.replace(/[^A-Za-z0-9_\-.~:@+]/g,'_').slice(0,190);
+function defaultPrep(e){
+  if(e.type==='feestdag'){ const d=DEFAULT_PREP[e.titel]; if(d) return d.map(([titel,dagen],i)=>({id:'d'+i,titel,dagen,wie:null})); return e.rem?[{id:'a',titel:e.actie,dagen:e.rem,wie:null}]:[]; }
+  return e.rem?[{id:'a',titel:e.actie,dagen:e.rem,wie:null}]:[];
+}
+function prepItems(e){ const doc=(D.voorbereiding||{})[prepId(tplKey(e))]; return doc&&Array.isArray(doc.items)?doc.items:defaultPrep(e); }
+function isGeregeld(e,item){ return !!(S.geregeld[e.key+'|'+item.id]||(item.id==='a'&&S.geregeld[e.key])); }
+function reminders(){ const out=[]; events().forEach(e=>{ const n=daysUntil(e.date); prepItems(e).forEach(it=>{ if(n<=Number(it.dagen)&&!isGeregeld(e,it)) out.push({...e,actie:it.titel,key:e.key+'|'+it.id,wie:it.wie||null,rem:Number(it.dagen),item:it}); }); }); return out.sort((a,b)=>a.date-b.date); }
+async function savePrep(e,items){ return put('voorbereiding',prepId(tplKey(e)),{items}); }
+const openPrep=new Set();
 
 /* ---------- health ---------- */
 const SEAS=[['lente','Lente'],['zomer','Zomer'],['herfst','Herfst'],['winter','Winter']];
@@ -89,6 +107,11 @@ function ring(h,size=38,label=true){ const r=size/2-4,c=2*Math.PI*r; return `<sv
 /* ---------- people ---------- */
 function bewoners(){ return Array.isArray(S.hh.bewoners)?S.hh.bewoners.filter(b=>b&&b.id):[]; }
 function personName(id){ if(!id) return null; const p=S.profiles[id]; if(p&&p.naam) return p.naam; const b=bewoners().find(x=>x.id===id); return b?b.naam:'iemand'; }
+function whoBadge(id){ if(!id||!bewoners().some(b=>b.id===id)) return ''; const c=personColor(id); return ` <span class="who-badge" style="color:${c};border-color:${c}">${esc(personName(id))}</span>`; }
+function whoSelect(name,cur){ return `<select name="${name}" aria-label="Voor wie" style="flex:0 1 150px"><option value="">Wie maar wil</option>${bewoners().map(b=>`<option value="${esc(b.id)}" ${b.id===cur?'selected':''}>${esc(personName(b.id))}</option>`).join('')}</select>`; }
+const validWie=v=>bewoners().some(b=>b.id===v)?v:null;
+function mineFilter(){ return lsGet('onshuis-filter')==='mij'; }
+const forMe=w=>!mineFilter()||!w||w===S.meId;
 function personColor(id){ const i=bewoners().findIndex(b=>b.id===id); return i===1?css('--p2'):css('--accent'); }
 
 /* ---------- weather ---------- */
@@ -403,12 +426,13 @@ function renderHome(){
   const rem=reminders();
   $('#zones').innerHTML=GROUPS.map(g=>{ const h=groupHealth(g), n=groupAttention(g); return `<button class="zchip" data-group="${g.id}">${ring(h,48)}<span class="t"><span class="n" style="font-size:1rem">${esc(g.name)}</span><span class="s">${n?`${n} te doen`:'op orde'}</span></span></button>`; }).join('');
   // attention
-  const worst=S.tasks.filter(t=>!t.once&&isActive(t)).map(t=>({t,f:fresh(t)})).sort((a,b)=>a.f-b.f).slice(0,4);
-  const onceDue=S.tasks.filter(t=>t.once&&!t.done&&t.due&&daysUntil(dateFrom(t.due))<=3).sort((a,b)=>a.due.localeCompare(b.due));
-  $('#attention').innerHTML=`<h3>Komt nu aan de beurt</h3><ul class="att-list">
-    ${rem.map(e=>{const n=daysUntil(e.date);return `<li><button class="link" data-spot="${e.type==='afspraak'?'hal':'kalender'}"><b>${esc(e.actie)}</b> <span class="muted">· ${esc(e.titel)}${e.age?` wordt ${e.age}`:''} · ${whenTxt(n)}</span></button><button class="btn small" data-regel="${esc(e.key)}">Geregeld</button></li>`;}).join('')}
-    ${onceDue.map(t=>{const n=daysUntil(dateFrom(t.due));return `<li><button class="link" data-spot="${spotOf(t)}" data-opensub="eenmalig">${esc(t.name)} <span class="muted">· ${esc(SP[spotOf(t)].name)} · ${n<0?'te laat':whenTxt(n)}</span></button><button class="btn small" data-oncedone="${t.id}">Klaar</button></li>`;}).join('')}
-    ${worst.map(({t,f})=>`<li><button class="link" data-spot="${spotOf(t)}">${esc(t.name)} <span class="muted">· ${esc(SP[spotOf(t)].name)}</span></button><span style="color:${stateColor(f)};font-weight:700;font-variant-numeric:tabular-nums">${Math.round(f*100)}%</span></li>`).join('')}</ul>`;
+  const remF=rem.filter(e=>forMe(e.wie));
+  const worst=S.tasks.filter(t=>!t.once&&isActive(t)&&forMe(t.wie)).map(t=>({t,f:fresh(t)})).sort((a,b)=>a.f-b.f).slice(0,4);
+  const onceDue=S.tasks.filter(t=>t.once&&!t.done&&t.due&&daysUntil(dateFrom(t.due))<=3&&forMe(t.wie)).sort((a,b)=>a.due.localeCompare(b.due));
+  $('#attention').innerHTML=`<div class="samen-head"><h3>Komt nu aan de beurt</h3>${bewoners().length>1?`<div class="seg" role="group" aria-label="Filter"><button data-filter="alles" aria-pressed="${!mineFilter()}">Alles</button><button data-filter="mij" aria-pressed="${mineFilter()}">Van mij</button></div>`:''}</div><ul class="att-list">
+    ${remF.map(e=>{const n=daysUntil(e.date);return `<li><button class="link" data-spot="${e.type==='afspraak'?'hal':'kalender'}"><b>${esc(e.actie)}</b>${whoBadge(e.wie)} <span class="muted">· ${esc(e.titel)}${e.age?` wordt ${e.age}`:''} · ${whenTxt(n)}</span></button><button class="btn small" data-regel="${esc(e.key)}">Geregeld</button></li>`;}).join('')}
+    ${onceDue.map(t=>{const n=daysUntil(dateFrom(t.due));return `<li><button class="link" data-spot="${spotOf(t)}" data-opensub="eenmalig">${esc(t.name)}${whoBadge(t.wie)} <span class="muted">· ${esc(SP[spotOf(t)].name)} · ${n<0?'te laat':whenTxt(n)}</span></button><button class="btn small" data-oncedone="${t.id}">Klaar</button></li>`;}).join('')}
+    ${worst.map(({t,f})=>`<li><button class="link" data-spot="${spotOf(t)}">${esc(t.name)}${whoBadge(t.wie)} <span class="muted">· ${esc(SP[spotOf(t)].name)}</span></button><span style="color:${stateColor(f)};font-weight:700;font-variant-numeric:tabular-nums">${Math.round(f*100)}%</span></li>`).join('')}</ul>`;
   renderRewards();
   renderWheel();
   drawScene();
@@ -486,15 +510,15 @@ function newForm(cat,mode){
   return `<form class="stack card" id="f-new" data-mode="${mode}"><h3>Iets toevoegen</h3>
     <input type="text" name="name" placeholder="Wat moet er gebeuren?" required aria-label="Taak">
     <div class="row"><div class="seg" role="group" aria-label="Herhaling"><button type="button" data-mode="rep" aria-pressed="${mode==='rep'}">Terugkerend</button><button type="button" data-mode="once" aria-pressed="${mode==='once'}">Eenmalig</button></div>
-    <select name="cat" aria-label="Soort" style="flex:0 1 180px">${CATS.map(([c,n])=>`<option value="${c}" ${c===cat?'selected':''}>${n}</option>`).join('')}</select></div>
+    <select name="cat" aria-label="Soort" style="flex:0 1 180px">${CATS.map(([c,n])=>`<option value="${c}" ${c===cat?'selected':''}>${n}</option>`).join('')}</select>${whoSelect('wie',null)}</div>
     <div class="stack" data-for="rep" style="gap:6px" ${mode==='rep'?'':'hidden'}>${ritmeFields(null)}<label class="row muted" data-r="jaar" style="gap:6px;font-size:.85rem">elke<input type="number" name="every" class="n-input" min="1" value="7">dagen</label></div>
     <label class="row muted" style="gap:6px;font-size:.85rem">levert<input type="number" name="punten" class="n-input" min="0" max="500" placeholder="auto">punten op <span style="font-size:.78rem">(leeg: naar zwaarte)</span></label>
     <label class="f" data-for="once" ${mode==='once'?'':'hidden'}>Uiterlijk op (mag leeg blijven)<input type="date" name="due"></label>
     <div><button class="btn" type="submit">Toevoegen</button></div></form>`;
 }
-function recurringRows(ts){ return ts.length?`<div class="tasks">${ts.map(t=>`<div class="task" style="${isActive(t)?'':'opacity:.62'}">${ring(fresh(t),44)}<div style="min-width:0"><div class="name">${esc(t.name)}</div><div class="meta">${taskMeta(t)}</div></div><button class="btn small" data-done="${t.id}">Gedaan +${ptsOf(t)}</button>
-  <details class="edit"><summary>Aanpassen</summary><form class="row" data-edit="${t.id}" style="margin-top:8px"><input type="text" name="name" class="grow" value="${esc(t.name)}" aria-label="Naam">${ritmeFields(t)}<label class="row muted" data-r="jaar" style="gap:6px;font-size:.85rem" ${t.trigger||t.perSeizoen?'hidden':''}>elke<input type="number" name="every" class="n-input" min="1" value="${t.everyDays}" aria-label="Elke zoveel dagen">dagen</label><select name="spot" aria-label="Plek in huis" style="flex:0 1 170px">${SPOTS.filter(x=>x.id!=='kalender').map(x=>`<option value="${x.id}" ${x.id===spotOf(t)?'selected':''}>${esc(x.name)}</option>`).join('')}</select><select name="cat" aria-label="Soort" style="flex:0 1 150px">${CATS.map(([c,n])=>`<option value="${c}" ${c===catOf(t)?'selected':''}>${n}</option>`).join('')}</select><label class="row muted" style="gap:6px;font-size:.85rem"><input type="number" name="punten" class="n-input" min="0" max="500" value="${ptsOf(t)}" aria-label="Punten">punten</label><button class="btn small" type="submit">Bewaar</button><button class="btn ghost small" type="button" data-del="${t.id}">Verwijder</button></form></details></div>`).join('')}</div>`:''; }
-function onceRows(ts){ return ts.length?`<div class="tasks">${ts.map(t=>{ const late=!t.done&&t.due&&daysUntil(dateFrom(t.due))<0; return `<div class="once ${late?'late':''}"><input type="checkbox" data-oncedone="${t.id}" ${t.done?'checked disabled':''} aria-label="Afronden"><div style="min-width:0"><div class="name" style="font-weight:600;${t.done?'text-decoration:line-through;color:var(--muted)':''}">${esc(t.name)}</div><div class="meta">${onceMeta(t)}${t.cat&&openSub==='eenmalig'?` · ${esc(CATN[catOf(t)])}`:''}</div></div>${t.done?'':`<span class="badge-pts">+${ptsOf(t)}</span>`}<button class="btn ghost small" data-del="${t.id}">Weg</button></div>`; }).join('')}</div>`:''; }
+function recurringRows(ts){ return ts.length?`<div class="tasks">${ts.map(t=>`<div class="task" style="${isActive(t)?'':'opacity:.62'}">${ring(fresh(t),44)}<div style="min-width:0"><div class="name">${esc(t.name)}${whoBadge(t.wie)}</div><div class="meta">${taskMeta(t)}</div></div><button class="btn small" data-done="${t.id}">Gedaan +${ptsOf(t)}</button>
+  <details class="edit"><summary>Aanpassen</summary><form class="row" data-edit="${t.id}" style="margin-top:8px"><input type="text" name="name" class="grow" value="${esc(t.name)}" aria-label="Naam">${ritmeFields(t)}<label class="row muted" data-r="jaar" style="gap:6px;font-size:.85rem" ${t.trigger||t.perSeizoen?'hidden':''}>elke<input type="number" name="every" class="n-input" min="1" value="${t.everyDays}" aria-label="Elke zoveel dagen">dagen</label><select name="spot" aria-label="Plek in huis" style="flex:0 1 170px">${SPOTS.filter(x=>x.id!=='kalender').map(x=>`<option value="${x.id}" ${x.id===spotOf(t)?'selected':''}>${esc(x.name)}</option>`).join('')}</select><select name="cat" aria-label="Soort" style="flex:0 1 150px">${CATS.map(([c,n])=>`<option value="${c}" ${c===catOf(t)?'selected':''}>${n}</option>`).join('')}</select>${whoSelect('wie',t.wie)}<label class="row muted" style="gap:6px;font-size:.85rem"><input type="number" name="punten" class="n-input" min="0" max="500" value="${ptsOf(t)}" aria-label="Punten">punten</label><button class="btn small" type="submit">Bewaar</button><button class="btn ghost small" type="button" data-del="${t.id}">Verwijder</button></form></details></div>`).join('')}</div>`:''; }
+function onceRows(ts){ return ts.length?`<div class="tasks">${ts.map(t=>{ const late=!t.done&&t.due&&daysUntil(dateFrom(t.due))<0; return `<div class="once ${late?'late':''}"><input type="checkbox" data-oncedone="${t.id}" ${t.done?'checked disabled':''} aria-label="Afronden"><div style="min-width:0"><div class="name" style="font-weight:600;${t.done?'text-decoration:line-through;color:var(--muted)':''}">${esc(t.name)}${whoBadge(t.wie)}</div><div class="meta">${onceMeta(t)}${t.cat&&openSub==='eenmalig'?` · ${esc(CATN[catOf(t)])}`:''}</div></div>${t.done?'':`<span class="badge-pts">+${ptsOf(t)}</span>`}<button class="btn ghost small" data-del="${t.id}">Weg</button>${t.done?'':`<details class="edit"><summary>Aanpassen</summary><form class="row" data-onceedit="${t.id}" style="margin-top:8px"><input type="text" name="name" class="grow" value="${esc(t.name)}" aria-label="Naam"><input type="date" name="due" value="${esc(t.due||'')}" aria-label="Uiterlijk op" style="flex:0 1 160px">${whoSelect('wie',t.wie)}<button class="btn small" type="submit">Bewaar</button></form></details>`}</div>`; }).join('')}</div>`:''; }
 function specialHtml(id){
   if(id==='boodschappen') return `<div class="stack">
       <form class="row" id="f-shop"><input type="text" id="shop-in" class="grow" placeholder="Wat moet erbij?"><button class="btn" type="submit">Erbij</button></form>
@@ -507,8 +531,13 @@ function specialHtml(id){
 }
 function kalenderHtml(){
   const evs=events().slice(0,14), rem=reminders();
-  return `${rem.length?`<div class="stack"><h3>Herinneringen</h3><ul class="list">${rem.map(e=>`<li><span><b>${esc(e.actie)}</b><br><span class="muted">${esc(e.titel)}${e.age?` wordt ${e.age}`:''} · ${fmtDate(e.date)} · ${whenTxt(daysUntil(e.date))}</span></span><button class="btn small" data-regel="${esc(e.key)}">Geregeld</button></li>`).join('')}</ul></div>`:''}
-    <div class="stack"><h3>Binnenkort</h3><ul class="list">${evs.map(e=>{const n=daysUntil(e.date); const done=S.geregeld[e.key]; return `<li><span><b>${esc(e.titel)}</b>${e.age?` <span class="muted">wordt ${e.age}</span>`:''}${e.jaren?` <span class="muted">${e.jaren} jaar</span>`:''}<br><span class="muted">${fmtDate(e.date)} · ${whenTxt(n)}${e.needs?` · ${done?'geregeld':esc(e.actie)+(n>e.rem?` (herinnering ${e.rem} dagen vooraf)`:'')}`:''}</span></span>${e.type==='feestdag'?'<span class="tag">feestdag</span>':e.type==='afspraak'?'<span class="tag">afspraak</span>':e.fromProfile?'<span class="tag gift">profiel</span>':`<button class="btn ghost small" data-dagdel="${esc(e.dagId)}">Weg</button>`}</li>`;}).join('')}</ul></div>
+  return `${rem.length?`<div class="stack"><h3>Herinneringen</h3><ul class="list">${rem.map(e=>`<li><span><b>${esc(e.actie)}</b>${whoBadge(e.wie)}<br><span class="muted">${esc(e.titel)}${e.age?` wordt ${e.age}`:''} · ${fmtDate(e.date)} · ${whenTxt(daysUntil(e.date))}</span></span><button class="btn small" data-regel="${esc(e.key)}">Geregeld</button></li>`).join('')}</ul></div>`:''}
+    <div class="stack"><h3>Binnenkort</h3><ul class="list">${evs.map(e=>{const n=daysUntil(e.date); const items=prepItems(e); const klaar=items.filter(it=>isGeregeld(e,it)).length; const tk=tplKey(e);
+      return `<li class="ev"><div class="ev-head"><span><b>${esc(e.titel)}</b>${e.age?` <span class="muted">wordt ${e.age}</span>`:''}${e.jaren?` <span class="muted">${e.jaren} jaar</span>`:''}<br><span class="muted">${fmtDate(e.date)} · ${whenTxt(n)}</span></span>${e.type==='feestdag'?'<span class="tag">feestdag</span>':e.type==='afspraak'?'<span class="tag">afspraak</span>':e.fromProfile?'<span class="tag gift">profiel</span>':`<button class="btn ghost small" data-dagdel="${esc(e.dagId)}">Weg</button>`}</div>
+      <details class="prep" data-prep="${esc(tk)}" ${openPrep.has(tk)?'open':''}><summary>Voorbereiding${items.length?` · ${klaar} van ${items.length} geregeld`:''}</summary>
+        ${items.length?`<ul class="prep-list">${items.map(it=>{ const done=isGeregeld(e,it), due=Number(it.dagen); const act=!done&&n<=due; return `<li><input type="checkbox" ${done?'checked':''} data-prepcheck="${esc(e.key)}|${esc(it.id)}" aria-label="Geregeld"><span class="${done?'done':''}">${esc(it.titel)}${whoBadge(it.wie)}<br><span class="muted" style="${act?'color:var(--warn);font-weight:600':''}">${due} ${due===1?'dag':'dagen'} vooraf${act?' · nu aan de beurt':''}</span></span><button class="btn ghost small" data-prepdel="${esc(e.key)}|${esc(it.id)}" aria-label="Subtaak verwijderen">×</button></li>`; }).join('')}</ul>`:'<p class="muted" style="margin:6px 0">Nog niets voor te bereiden.</p>'}
+        <form class="row" data-prepadd="${esc(e.key)}" style="margin-top:8px"><input type="text" name="titel" class="grow" placeholder="Bijv. gedicht schrijven" aria-label="Subtaak" required><label class="row muted" style="gap:6px;font-size:.85rem"><input type="number" name="dagen" class="n-input" min="0" max="120" value="7" aria-label="Dagen vooraf">dagen vooraf</label>${whoSelect('wie',null)}<button class="btn small" type="submit">Toevoegen</button></form>
+      </details></li>`;}).join('')}</ul></div>
     <form class="stack card" id="f-dag"><h3>Verjaardag of bijzondere dag toevoegen</h3>
       <div class="row"><input type="text" id="dg-titel" class="grow" placeholder="Naam, bijv. oma Riet" required><select id="dg-type" style="flex:0 1 150px"><option value="verjaardag">Verjaardag</option><option value="jubileum">Jubileum</option><option value="overig">Andere dag</option></select></div>
       <div class="row"><label class="f grow">Datum (jaar mag ook een gok zijn)<input type="date" id="dg-datum" required></label><label class="row muted" style="gap:6px;font-size:.85rem"><input type="checkbox" id="dg-cadeau" checked> cadeau nodig</label><label class="row muted" style="gap:6px;font-size:.85rem">herinner<input type="number" id="dg-rem" class="n-input" min="1" max="60" value="7">dagen vooraf</label></div>
@@ -548,7 +577,7 @@ function derive(){
   const arr=c=>Object.entries(D[c]||{}).map(([id,d])=>({id,...d}));
   S.tasks=arr('tasks'); S.shopping=arr('shopping'); S.afspraken=arr('afspraken'); S.dagen=arr('dagen'); S.beloningen=arr('beloningen'); S.gewonnen=arr('gewonnen'); S.swipes=arr('swipes'); S.fotos=arr('fotos'); S.log=arr('log');
   S.geregeld={}; arr('geregeld').forEach(g=>{ if(g.key) S.geregeld[g.key]=true; });
-  S.profiles={...(D.profiles||{})}; S.hh=(D.household&&D.household.main)||{};
+  S.profiles={...(D.profiles||{})}; S.voorbereiding=D.voorbereiding||{}; S.hh=(D.household&&D.household.main)||{};
 }
 function applyRows(rows,full){ if(full) for(const k in D) delete D[k]; rows.forEach(r=>{ const c=D[r.collection]||(D[r.collection]={}); if(r.data&&r.data._del) delete c[r.id]; else c[r.id]=r.data||{}; }); derive(); }
 function local(col,id,data,merge){ const c=D[col]||(D[col]={}); c[id]=merge?{...(c[id]||{}),...data}:{...data}; }
@@ -556,8 +585,8 @@ async function put(col,id,data,merge){ local(col,id,data,merge); derive(); reren
 async function del(col,id){ if(D[col]) delete D[col][id]; derive(); rerender(); return Store.del(col,id); }
 async function batch(ops){ ops.forEach(o=>local(o.c,o.id,o.data,o.op==='merge')); derive(); rerender(); return Store.batch(ops); }
 async function markDone(id){ const t=S.tasks.find(x=>x.id===id); if(!t) return; const at=new Date().toISOString(); return batch([{op:'merge',c:'tasks',id,data:{lastDone:at,lastBy:S.meId}},{op:'set',c:'log',id:uid(),data:{taskId:id,spot:spotOf(t),by:S.meId,at,punten:ptsOf(t),naam:t.name}}]); }
-async function addTask(spot,name,every,cat,punten,extra){ return put('tasks',uid(),{spot,cat:CATN[cat]?cat:'overig',name,punten:clampPts(punten,null),perSeizoen:(extra&&extra.perSeizoen)||null,trigger:(extra&&extra.trigger)||null,everyDays:Math.max(1,Number(every)||7),lastDone:new Date().toISOString(),lastBy:null}); }
-async function addOnce(spot,name,due,cat,punten){ return put('tasks',uid(),{spot,cat:CATN[cat]?cat:'overig',name,punten:clampPts(punten,10),once:true,due:/^\d{4}-\d{2}-\d{2}$/.test(due||'')?due:null,done:false,by:S.meId,at:new Date().toISOString()}); }
+async function addTask(spot,name,every,cat,punten,extra,wie){ return put('tasks',uid(),{spot,wie:validWie(wie),cat:CATN[cat]?cat:'overig',name,punten:clampPts(punten,null),perSeizoen:(extra&&extra.perSeizoen)||null,trigger:(extra&&extra.trigger)||null,everyDays:Math.max(1,Number(every)||7),lastDone:new Date().toISOString(),lastBy:null}); }
+async function addOnce(spot,name,due,cat,punten,wie){ return put('tasks',uid(),{spot,wie:validWie(wie),cat:CATN[cat]?cat:'overig',name,punten:clampPts(punten,10),once:true,due:/^\d{4}-\d{2}-\d{2}$/.test(due||'')?due:null,done:false,by:S.meId,at:new Date().toISOString()}); }
 async function doneOnce(id){ const t=S.tasks.find(x=>x.id===id); if(!t||t.done) return; const at=new Date().toISOString(); return batch([{op:'merge',c:'tasks',id,data:{done:true,doneAt:at,doneBy:S.meId}},{op:'set',c:'log',id:uid(),data:{taskId:id,spot:spotOf(t),by:S.meId,at,punten:ptsOf(t),naam:t.name}}]); }
 async function addShop(name,waar){ return put('shopping',uid(),{name,waar:waar||'',done:false,by:S.meId,at:new Date().toISOString()}); }
 async function addAfspraak(titel,datum,voorbereiding){ return put('afspraken',uid(),{titel,datum,voorbereiding:voorbereiding||'',by:S.meId}); }
@@ -594,6 +623,9 @@ document.addEventListener('click',e=>{
   if(b.dataset.afdel){ safe(del('afspraken',b.dataset.afdel)); }
   if(b.dataset.dagdel){ if(b.dataset.armed){ safe(del('dagen',b.dataset.dagdel)); } else { b.dataset.armed='1'; b.textContent='Zeker?'; } }
   if(b.dataset.regel){ b.disabled=true; safe(regel(b.dataset.regel)); }
+  if(b.dataset.filter){ lsSet('onshuis-filter',b.dataset.filter==='mij'?'mij':null); renderHome(); return; }
+  if(b.dataset.prepcheck){ const key=b.dataset.prepcheck; if(b.checked) safe(regel(key)); else { const [ek]=key.split('|'); safe(del('geregeld',key.replace(/[^A-Za-z0-9_\-.~:@+]/g,'_').slice(0,190))); if(key.endsWith('|a')&&S.geregeld[ek]) safe(del('geregeld',ek.replace(/[^A-Za-z0-9_\-.~:@+]/g,'_').slice(0,190))); } return; }
+  if(b.dataset.prepdel){ const i=b.dataset.prepdel.lastIndexOf('|'); const ek=b.dataset.prepdel.slice(0,i), iid=b.dataset.prepdel.slice(i+1); const e=events().find(x=>x.key===ek); if(e){ openPrep.add(tplKey(e)); safe(savePrep(e,prepItems(e).filter(it=>it.id!==iid))); } return; }
   if(b.id==='shop-clear'){ S.shopping.filter(i=>i.done).forEach(i=>safe(del('shopping',i.id))); }
   if(b.dataset.closesheet) closeSheet();
   if(b.dataset.v){ showTab(b.dataset.v); }
@@ -612,6 +644,7 @@ document.addEventListener('click',e=>{
 });
 $('#scrim').addEventListener('click',closeSheet);
 document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeSheet(); });
+document.addEventListener('toggle',e=>{ const d=e.target; if(d&&d.dataset&&d.dataset.prep){ if(d.open) openPrep.add(d.dataset.prep); else openPrep.delete(d.dataset.prep); } },true);
 document.addEventListener('change',e=>{ const el=e.target;
   if(el.name==='ritme'){ const f=el.closest('form'); f.querySelectorAll('[data-r]').forEach(x=>x.hidden=x.dataset.r!==el.value); }
   if(el.id==='foto-in') handlePhoto(el);
@@ -620,9 +653,12 @@ document.addEventListener('submit',e=>{
   const f=e.target; e.preventDefault();
   if(f.id==='f-new'){ const n=f.elements.name.value.trim(); if(!n) return; const cat=f.elements.cat.value;
     const pts=f.elements.punten.value;
-    if(f.dataset.mode==='once'){ safe(addOnce(openSpot,n,f.elements.due.value,cat,pts)); if(openSub&&openSub!=='eenmalig'&&openSub!==cat) openSub=cat; }
-    else { const R=readRitme(f); safe(addTask(openSpot,n,R.everyDays,cat,pts,R)); if(openSub&&openSub!==cat) openSub=cat; } }
-  else if(f.dataset.edit){ safe(put('tasks',f.dataset.edit,{name:f.elements.name.value.trim()||'Taak',...(({perSeizoen,trigger,everyDays})=>({perSeizoen,trigger,everyDays}))(readRitme(f)),spot:f.elements.spot.value,cat:f.elements.cat.value,punten:clampPts(f.elements.punten.value,null)},true)); }
+    const wie=f.elements.wie?f.elements.wie.value:'';
+    if(f.dataset.mode==='once'){ safe(addOnce(openSpot,n,f.elements.due.value,cat,pts,wie)); if(openSub&&openSub!=='eenmalig'&&openSub!==cat) openSub=cat; }
+    else { const R=readRitme(f); safe(addTask(openSpot,n,R.everyDays,cat,pts,R,wie)); if(openSub&&openSub!==cat) openSub=cat; } }
+  else if(f.dataset.edit){ safe(put('tasks',f.dataset.edit,{name:f.elements.name.value.trim()||'Taak',...(({perSeizoen,trigger,everyDays})=>({perSeizoen,trigger,everyDays}))(readRitme(f)),spot:f.elements.spot.value,cat:f.elements.cat.value,wie:validWie(f.elements.wie.value),punten:clampPts(f.elements.punten.value,null)},true)); }
+  else if(f.dataset.onceedit){ const due=f.elements.due.value; safe(put('tasks',f.dataset.onceedit,{name:f.elements.name.value.trim()||'Taak',due:/^\d{4}-\d{2}-\d{2}$/.test(due)?due:null,wie:validWie(f.elements.wie.value)},true)); }
+  else if(f.dataset.prepadd){ const e=events().find(x=>x.key===f.dataset.prepadd); const t=f.elements.titel.value.trim(); if(e&&t){ const items=prepItems(e).slice(); items.push({id:uid(),titel:t.slice(0,100),dagen:Math.max(0,Math.min(120,Number(f.elements.dagen.value)||7)),wie:validWie(f.elements.wie.value)}); openPrep.add(tplKey(e)); safe(savePrep(e,items)); } }
   else if(f.id==='f-shop'){ const inp=f.querySelector('input'); const n=inp.value.trim(); inp.value=''; if(n) safe(addShop(n)); }
   else if(f.id==='f-af'){ safe(addAfspraak($('#af-titel').value.trim(),$('#af-datum').value,$('#af-prep').value.trim())); }
   else if(f.id==='f-dag'){ const t=$('#dg-titel').value.trim(), d=$('#dg-datum').value; if(t&&d) safe(addDag(t,$('#dg-type').value,d,$('#dg-cadeau').checked,$('#dg-rem').value,$('#dg-geenjaar').checked)); }
