@@ -12,6 +12,7 @@ const SPOTS=[
   {id:'koelkast',name:'Koelkast en voorraad',room:'Keuken',x:300,y:252},
   {id:'keuken',name:'Aanrecht en kookhoek',room:'Keuken',x:252,y:290},
   {id:'kluis',name:'Kluis',room:'Geldzaken',x:372,y:296},
+  {id:'afval',name:'Prullenbak',room:'Voortuin',x:121,y:350},
   {id:'tuin',name:'Tuin',room:'Buiten',x:30,y:206},
   {id:'auto',name:'Auto',room:'Oprit',x:372,y:348}
 ];
@@ -192,17 +193,44 @@ function drawScene(){
   const soon=events().some(e=>e.type!=='feestdag'&&daysUntil(e.date)<=3);
   setA('flag','transform',soon?'':'rotate(90 175.5 337)');
   const ko=spotHealth('koelkast'); setA('fridgenote','opacity',S.shopping.some(i=>!i.done)||ko<.4?1:0); setA('fridgenote','fill',ko<.3?'#e5735f':'#f2d35e');
-  const ke=spotHealth('keuken'); const stack=Math.round((1-ke)*5); $('#dishes').innerHTML=Array.from({length:stack},(_,i)=>`<ellipse cx="${257+(i%2)}" cy="${296-i*2.6}" rx="8" ry="1.8" fill="#f4f4f2" stroke="#b9bec2" stroke-width=".8"/>`).join(''); setA('grease','opacity',Math.max(0,1-ke*1.5));
+  const ke=spotHealth('keuken'); $('#dishes').innerHTML=dishesSvg(1-ke); setA('grease','opacity',Math.max(0,1-ke*1.5));
+  setA('toiletdirt','opacity',Math.max(0,Math.min(1,(.6-ba)*2.2)).toFixed(2));
+  const af=spotHealth('afval');
+  setA('over1','opacity',af<.45?1:0); setA('over2','opacity',af<.3?1:0); setA('bags','opacity',af<.2?1:0);
+  setA('lid1','transform',af<.45?'rotate(-24 98.5 358)':''); setA('lid2','transform',af<.3?'rotate(-18 122.5 358)':'');
   const m=spotHealth('kluis'); setA('vaultglow','opacity',m>.6?((m-.6)*1.1).toFixed(2):0); setA('cobweb','opacity',Math.max(0,1-m*1.6));
   const a=spotHealth('auto'); setA('cardirt','opacity',Math.max(0,.95-a*1.1)); setA('carshine','opacity',a>.7?1:0);
-  $('#markers').innerHTML=SPOTS.map(s=>{ const v=spotHealth(s.id); if(v<.3) return `<circle cx="${s.x}" cy="${s.y}" r="5" fill="none" stroke="#e5533f" stroke-width="2" class="pulse"/><circle cx="${s.x}" cy="${s.y}" r="3.2" fill="#e5533f"/>`; if(v>.88) return `<path class="spark" d="M${s.x} ${s.y-5} l1.4 3.6 3.6 1.4 -3.6 1.4 -1.4 3.6 -1.4 -3.6 -3.6 -1.4 3.6 -1.4z" fill="#fff6c4" stroke="#e8c45a" stroke-width=".6"/>`; return ''; }).join('');
+  $('#markers').innerHTML=SPOTS.map(s=>{ const v=spotHealth(s.id); if(v<.3) return `<circle cx="${s.x}" cy="${s.y}" r="5" fill="none" stroke="#e5533f" stroke-width="2" class="pulse"/><circle cx="${s.x}" cy="${s.y}" r="3.2" fill="#e5533f"/>`; return ''; }).join('');
+  // vuil en glans
+  let fxs='';
+  const dirtAt={keuken:[257,284,ke],badkamer:[296,200,ba],afval:[121,352,af],koelkast:[300,250,ko]};
+  Object.entries(dirtAt).forEach(([id,[x,y,v]])=>{ if(v<.45) fxs+=stinkSvg(x,y,v); if(v<.32) fxs+=fliesSvg(x,y-6,v<.15?5:3,id); });
+  SPOTS.forEach(s=>{ const v=spotHealth(s.id); if(s.id==='kalender') return; const g=GLINT_AT[s.id]||[s.x,s.y,14]; if(v>=.97) fxs+=glitterSvg(g[0],g[1],g[2],6,s.id); else if(v>=.85) fxs+=glitterSvg(g[0],g[1],g[2]*.6,2,s.id); });
+  $('#fx').innerHTML=fxs;
   // whole house mood
   const all=SPOTS.reduce((acc,s)=>acc+spotHealth(s.id),0)/SPOTS.length;
   setA('houseshade','opacity',all<.55?((.55-all)*.9).toFixed(2):0);
   setA('smoke','opacity',all>.6?1:0);
   setA('bunting','opacity',all>.8?1:0);
+  $('#houseglitter').innerHTML=all>=.95?glitterSvg(200,190,120,18,'huis')+`<path class="shine" d="M70 334 Q200 150 330 334" stroke="url(#rainbowg)" stroke-width="7" fill="none"/>`:'';
   if(!$('#flags').innerHTML){ const cols=['#e8618c','#f2b53a','#4f8a3c','#3f78b5','#d9703f']; let f=''; for(let i=0;i<11;i++){ const x=94+i*20.5, t=(x-84)/232, y=139+4*13*t*(1-t)*0.9; f+=`<path d="M${x-5} ${y} L${x+5} ${y} L${x} ${y+9}Z" fill="${cols[i%5]}"/>`; } $('#flags').innerHTML=f; }
 }
+
+/* ---------- vuil en glans ---------- */
+const GLINT_AT={dak:[200,96,40],cv:[239,108,16],bed:[130,208,22],kast:[184,190,16],badkamer:[262,196,30],woonkamer:[124,300,28],hal:[196,300,14],koelkast:[300,290,14],keuken:[252,292,22],kluis:[372,312,16],tuin:[60,330,40],auto:[376,370,30],afval:[121,372,18]};
+function seeded(i,salt){ let h=2166136261; for(const c of salt+':'+i){ h^=c.charCodeAt(0); h=Math.imul(h,16777619); } return (h>>>0)/4294967295; }
+function glitterSvg(x,y,r,n,salt){ let s=''; for(let i=0;i<n;i++){ const a=seeded(i,salt+'a')*Math.PI*2, rr=r*(.25+.75*seeded(i,salt+'r')), px=(x+Math.cos(a)*rr).toFixed(1), py=(y+Math.sin(a)*rr*.75).toFixed(1), k=1.4+seeded(i,salt+'k')*2.2, d=(seeded(i,salt+'d')*1.8).toFixed(2);
+  s+=`<path class="glint" style="animation-delay:-${d}s" d="M${px} ${py-k*2}L${+px+k*.45} ${py-k*.45}L${+px+k*2} ${py}L${+px+k*.45} ${+py+k*.45}L${px} ${+py+k*2}L${px-k*.45} ${+py+k*.45}L${px-k*2} ${py}L${px-k*.45} ${py-k*.45}Z" fill="#fffbe6" stroke="#f0c94a" stroke-width=".5"/>`; } return s; }
+function fliesSvg(x,y,n,salt){ let s=''; for(let i=0;i<n;i++){ const dx=((seeded(i,salt+'x')-.5)*16).toFixed(1), dy=(-seeded(i,salt+'y')*10).toFixed(1);
+  s+=`<g transform="translate(${x+ +dx} ${y+ +dy})"><g class="fly f${i%3+1}" style="animation-delay:-${(i*.37).toFixed(2)}s"><ellipse class="wing" cx="-1.7" cy="-1.8" rx="2" ry="1.2" fill="#e4edf2" stroke="#9aa5ab" stroke-width=".3"/><ellipse class="wing" cx="1.7" cy="-1.8" rx="2" ry="1.2" fill="#e4edf2" stroke="#9aa5ab" stroke-width=".3"/><ellipse rx="2.1" ry="1.5" fill="#1c1f22"/></g></g>`; } return s; }
+function stinkSvg(x,y,v){ const op=Math.min(1,(.45-v)*3+.3).toFixed(2); return [0,1,2].map(i=>`<path class="stink" style="animation-delay:${(i*.8).toFixed(1)}s;opacity:${op}" d="M${x-6+i*6} ${y} q2.5 -3 0 -6 t0 -6" stroke="#8a9a3c" stroke-width="1.3" fill="none" stroke-linecap="round"/>`).join(''); }
+function dishesSvg(dirt){ const n=Math.round(dirt*9); if(!n) return ''; const plate=lerp('#f6f6f2','#d6c7a6',dirt), rim=lerp('#b9bec2','#8c7a58',dirt); let s='';
+  if(dirt>.45) s+=`<ellipse cx="240" cy="296" rx="8" ry="2.4" fill="#3b3f43"/><path d="M232 295 h-7" stroke="#3b3f43" stroke-width="2" stroke-linecap="round"/><ellipse cx="240" cy="295.4" rx="5" ry="1.2" fill="#8a4a24"/>`;
+  for(let i=0;i<n;i++){ const cx=257+((i*3)%5-2)*.8, cy=296-i*2.4; s+=`<ellipse cx="${cx}" cy="${cy}" rx="8.5" ry="1.9" fill="${plate}" stroke="${rim}" stroke-width=".8"/>`;
+    if(dirt>.3&&i%2===0) s+=`<ellipse cx="${cx-3+(i%3)*2.5}" cy="${cy-.4}" rx="2.2" ry=".8" fill="${i%4?'#b5652d':'#c9a227'}"/>`; }
+  if(dirt>.6) s+=`<rect x="268" y="287" width="4.5" height="9" rx="1" fill="#cfe2ea" stroke="#9fb3bc" stroke-width=".6"/><rect x="268.5" y="292" width="3.5" height="3.6" fill="#9a7a3a" opacity=".7"/><rect x="274" y="289" width="4" height="7" rx="1" fill="#cfe2ea" stroke="#9fb3bc" stroke-width=".6"/>`;
+  if(dirt>.75) s+=`<path d="M244 303 q1 4 0 7 M262 303 q-1 3 1 9 M278 303 q1 2 0 5" stroke="#8a5a2a" stroke-width="1.4" fill="none" stroke-linecap="round"/><ellipse cx="252" cy="326" rx="6" ry="1.2" fill="#8a5a2a" opacity=".6"/>`;
+  return s; }
 
 /* ---------- points ---------- */
 function clampPts(v,dflt){ const n=Math.round(Number(v)); return Number.isFinite(n)&&String(v).trim()!==''?Math.max(0,Math.min(500,n)):dflt; }
@@ -325,7 +353,7 @@ function flyOut(yes){ const card=document.getElementById('swipe-card'); if(!card
 
 /* ---------- foto's ---------- */
 const CAM=`<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>`;
-const PHOTO_HINT={koelkast:'Bijv. de binnenkant van koelkast of vriezer, of het typeplaatje.',cv:'Bijv. de cv-ketel, het typeplaatje of de drukmeter.',keuken:'Bijv. het typeplaatje van afzuigkap, oven of vaatwasser.',badkamer:'Bijv. wasmachine, droger of het typeplaatje daarvan.',auto:'Bijv. het kentekenbewijs, een dashboardlampje of de banden.',tuin:'Bijv. de robotmaaier, het gereedschap of een plant.',kast:'Bijv. de sokkenla of een stapel versleten kleding.'};
+const PHOTO_HINT={afval:'Bijv. de afvalkalender van de gemeente, zodat je de ophaaldagen bij de hand hebt.',koelkast:'Bijv. de binnenkant van koelkast of vriezer, of het typeplaatje.',cv:'Bijv. de cv-ketel, het typeplaatje of de drukmeter.',keuken:'Bijv. het typeplaatje van afzuigkap, oven of vaatwasser.',badkamer:'Bijv. wasmachine, droger of het typeplaatje daarvan.',auto:'Bijv. het kentekenbewijs, een dashboardlampje of de banden.',tuin:'Bijv. de robotmaaier, het gereedschap of een plant.',kast:'Bijv. de sokkenla of een stapel versleten kleding.'};
 const safeImg=u=>typeof u==='string'&&/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+\/=]+$/.test(u)?u:'';
 function fotoCard(f){
   return `<div class="foto"><button class="foto-open" data-fopen="${f.id}" aria-label="Foto groot bekijken"><img src="${esc(safeImg(f.thumb))}" alt="Foto bij ${esc(SP[f.spot]?.name||'')}"></button><form class="stack" data-fmeta="${f.id}" style="gap:6px;min-width:0">
@@ -484,7 +512,9 @@ function renderSheet(){
   let body='', title=s.name, eyebrow=s.room, h=spotHealth(openSpot);
   if(openSpot==='kalender'){ body=kalenderHtml(); }
   else if(!openSub){
-    body=`<div class="tiles">${subsFor(openSpot).map(x=>`<button class="tile" data-sub="${x.id}">${x.h===null?`<span class="tile-ic">${CAM}</span>`:ring(x.h,40)}<span class="tn">${esc(x.name)}</span><span class="ts">${esc(x.sub)}</span></button>`).join('')}</div>${newForm('overig'===defaultCat(openSpot)?'overig':defaultCat(openSpot),'rep')}`;
+    const seedFor=(window.ONS_HUIS_SEED||[]).filter(t=>t.spot===openSpot);
+    const defaultsBtn=!ts.length&&seedFor.length?`<div class="card stack"><b>Nog geen taken hier</b><span class="muted">Begin met ${seedFor.length} standaardtaken: ${esc(seedFor.map(t=>t.name).join(', '))}. Pas daarna het ritme aan op jullie ophaaldagen.</span><div><button class="btn" data-seedspot="${openSpot}">Standaardtaken toevoegen</button></div></div>`:'';
+    body=defaultsBtn+`<div class="tiles">${subsFor(openSpot).map(x=>`<button class="tile" data-sub="${x.id}">${x.h===null?`<span class="tile-ic">${CAM}</span>`:ring(x.h,40)}<span class="tn">${esc(x.name)}</span><span class="ts">${esc(x.sub)}</span></button>`).join('')}</div>${newForm('overig'===defaultCat(openSpot)?'overig':defaultCat(openSpot),'rep')}`;
   } else {
     eyebrow=s.name; const back=`<button class="back" data-back="1">‹ Terug naar ${esc(s.name)}</button>`;
     if(SPECIAL[openSpot]&&SPECIAL[openSpot].some(([id])=>id===openSub)){ title=SPECIAL[openSpot].find(([id])=>id===openSub)[1]; body=back+specialHtml(openSub); h=null; }
@@ -497,7 +527,7 @@ function renderSheet(){
   $('#sheet-in').innerHTML=`<div class="sheet-head"><div class="row" style="gap:12px">${h===null?'':ring(h,52)}<div><div class="eyebrow">${esc(eyebrow)}</div><h2 id="sheet-title">${esc(title)}</h2></div></div><button class="x" id="sheet-x" aria-label="Sluiten">×</button></div>
     ${ASKS[openSpot]&&!openSub?`<button class="askbtn" data-askfill="${esc(ASKS[openSpot])}">Vraag de vraagbaak hierover</button>`:''}${body}`;
 }
-function defaultCat(spot){ return {kluis:'geld',hal:'planning',koelkast:'voorraad',kast:'opruimen',tuin:'onderhoud',auto:'onderhoud',dak:'onderhoud',cv:'onderhoud'}[spot]||'schoonmaak'; }
+function defaultCat(spot){ return {afval:'opruimen',kluis:'geld',hal:'planning',koelkast:'voorraad',kast:'opruimen',tuin:'onderhoud',auto:'onderhoud',dak:'onderhoud',cv:'onderhoud'}[spot]||'schoonmaak'; }
 
 /* ---------- writes ---------- */
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
@@ -556,6 +586,7 @@ document.addEventListener('click',e=>{
   if(b.dataset.vote){ flyOut(b.dataset.vote==='yes'); return; }
   if(b.dataset.claim){ b.disabled=true; safe(claimMatch()); return; }
   if(b.dataset.reswipe){ safe(resetSwipes(b.dataset.reswipe==='all')); return; }
+  if(b.dataset.seedspot){ b.disabled=true; const now=Date.now(); const ops=(window.ONS_HUIS_SEED||[]).filter(t=>t.spot===b.dataset.seedspot).map((t,i)=>{ const {id,...data}=t; return {op:'set',c:'tasks',id:uid()+i,data:{...data,lastDone:new Date(now-DAY*Math.round((data.everyDays||7)*.3)).toISOString(),lastBy:null}}; }); safe(batch(ops)); return; }
   if(b.dataset.fopen){ openFoto(b.dataset.fopen); return; }
   if(b.id==='viewer-x'){ $('#viewer').hidden=true; $('#viewer-img').removeAttribute('src'); return; }
   if(b.dataset.fdel){ if(!b.dataset.armed){ b.dataset.armed='1'; b.textContent='Zeker?'; return; } const id=b.dataset.fdel; safe(del('fotos',id)); Store.del('fotobestand',id).catch(()=>{}); return; }

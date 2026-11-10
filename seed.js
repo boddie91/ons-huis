@@ -346,5 +346,71 @@ window.ONS_HUIS_SEED = [
   "punten": 15,
   "spot": "tuin",
   "trigger": null
+ },
+ {
+  "id": "t36",
+  "spot": "afval",
+  "cat": "opruimen",
+  "name": "Restafval aan de straat",
+  "everyDays": 14,
+  "punten": 10,
+  "lastDone": "2026-11-03T07:00:00Z",
+  "lastBy": null
+ },
+ {
+  "id": "t37",
+  "spot": "afval",
+  "cat": "opruimen",
+  "name": "GFT aan de straat",
+  "everyDays": 14,
+  "punten": 10,
+  "lastDone": "2026-10-27T07:00:00Z",
+  "lastBy": null
+ },
+ {
+  "id": "t38",
+  "spot": "afval",
+  "cat": "opruimen",
+  "name": "Plastic en PMD aan de straat",
+  "everyDays": 14,
+  "punten": 10,
+  "lastDone": "2026-11-05T07:00:00Z",
+  "lastBy": null
+ },
+ {
+  "id": "t39",
+  "spot": "afval",
+  "cat": "opruimen",
+  "name": "Oud papier wegbrengen",
+  "everyDays": 28,
+  "punten": 10,
+  "lastDone": "2026-10-20T07:00:00Z",
+  "lastBy": null
+ },
+ {
+  "id": "t40",
+  "spot": "afval",
+  "cat": "opruimen",
+  "name": "Pedaalemmer keuken legen",
+  "everyDays": 3,
+  "punten": 5,
+  "lastDone": "2026-11-08T19:00:00Z",
+  "lastBy": null
+ },
+ {
+  "id": "t41",
+  "spot": "afval",
+  "cat": "schoonmaak",
+  "name": "Containers uitspuiten",
+  "everyDays": 60,
+  "perSeizoen": {
+   "lente": 60,
+   "zomer": 30,
+   "herfst": 60,
+   "winter": 0
+  },
+  "punten": 15,
+  "lastDone": "2026-08-15T12:00:00Z",
+  "lastBy": null
  }
 ];

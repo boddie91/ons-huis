@@ -83,7 +83,18 @@ button.pill:hover{border-color:var(--accent)}
 @keyframes puff{0%{transform:translate(0,0) scale(.6);opacity:.8}100%{transform:translate(14px,-34px) scale(1.8);opacity:0}}
 .puff{animation:puff 3.6s ease-out infinite;transform-box:fill-box;transform-origin:center}
 .puff:nth-child(2){animation-delay:1.2s}.puff:nth-child(3){animation-delay:2.4s}
-@media (prefers-reduced-motion: reduce){.puff,.drop,.spark,.star,.pulse,.blink,.rainline,.flake,.leaf,.bolt,.cloud{animation:none}}
+@keyframes buzz1{0%,100%{transform:translate(0,0)}25%{transform:translate(6px,-5px)}50%{transform:translate(-3px,-10px)}75%{transform:translate(-7px,-3px)}}
+@keyframes buzz2{0%,100%{transform:translate(0,0)}25%{transform:translate(-6px,-7px)}50%{transform:translate(4px,-3px)}75%{transform:translate(7px,-9px)}}
+@keyframes flap{0%,100%{opacity:.95}50%{opacity:.25}}
+.fly{animation:buzz1 1.7s ease-in-out infinite}.fly.f2{animation-name:buzz2;animation-duration:1.3s}.fly.f3{animation-duration:2.2s;animation-direction:reverse}
+.fly .wing{animation:flap .09s linear infinite}
+@keyframes stink{0%{transform:translateY(0);opacity:0}30%{opacity:.85}100%{transform:translateY(-14px);opacity:0}}
+.stink{animation:stink 2.4s ease-out infinite}
+@keyframes glint{0%,100%{opacity:0;transform:scale(.2) rotate(0deg)}50%{opacity:1;transform:scale(1) rotate(45deg)}}
+.glint{animation:glint 1.8s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
+@keyframes rainbow{0%,100%{opacity:.0}50%{opacity:.55}}
+.shine{animation:rainbow 4s ease-in-out infinite}
+@media (prefers-reduced-motion: reduce){.fly,.fly .wing,.stink,.glint,.shine,.puff,.drop,.spark,.star,.pulse,.blink,.rainline,.flake,.leaf,.bolt,.cloud{animation:none}}
 
 /* Spot chips */
 .zones{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
@@ -258,6 +269,7 @@ label.f{display:grid;gap:4px;font-size:.82rem;color:var(--muted);font-weight:600
           <pattern id="smudge" width="10" height="10" patternUnits="userSpaceOnUse"><circle cx="3" cy="3" r="2.2" fill="#7d7660"/><circle cx="8" cy="8" r="1.4" fill="#8d8670"/></pattern>
           <pattern id="tiles" width="8" height="8" patternUnits="userSpaceOnUse"><rect width="8" height="8" fill="#cfe7ea"/><path d="M0 .5H8M.5 0V8" stroke="#b5d3d8" stroke-width="1"/></pattern>
           <pattern id="wood" width="12" height="6" patternUnits="userSpaceOnUse"><rect width="12" height="6" fill="#c69a6a"/><path d="M0 5.5H12M6 0v6" stroke="#ad8355" stroke-width="1"/></pattern>
+          <linearGradient id="rainbowg" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#e8618c"/><stop offset=".25" stop-color="#f2b53a"/><stop offset=".5" stop-color="#7cbf5a"/><stop offset=".75" stop-color="#4f9fd6"/><stop offset="1" stop-color="#9a6ad6"/></linearGradient>
           <radialGradient id="lampglow"><stop offset="0" stop-color="#ffd98a" stop-opacity=".75"/><stop offset="1" stop-color="#ffd98a" stop-opacity="0"/></radialGradient>
         </defs>
         <!-- sky -->
@@ -357,6 +369,7 @@ label.f{display:grid;gap:4px;font-size:.82rem;color:var(--muted);font-weight:600
             <rect x="277" y="151" width="22" height="18" fill="#cfe2ea"/>
             <rect x="266" y="172" width="9" height="24" rx="2" fill="#e68f6d"/>
             <rect id="bathgrime" x="202" y="178" width="112" height="46" fill="url(#smudge)" opacity="0"/>
+            <g id="toiletdirt" opacity="0"><ellipse cx="295" cy="206.5" rx="8" ry="1.8" fill="none" stroke="#8a6a2a" stroke-width="1.4"/><path d="M289 209 q2 5 0 9 M300 209 q-1 4 1 8" stroke="#a88a3a" stroke-width="1.1" fill="none"/><ellipse cx="297" cy="223" rx="9" ry="1.6" fill="#e3cf6e" opacity=".8"/><rect x="283" y="211" width="5" height="9" rx="1" fill="#f2efe6" stroke="#cfc8b8" transform="rotate(-12 285 215)"/></g>
             <g id="bathspark" opacity="0" fill="#fff"><path class="spark" d="M240 186 l1.5 4 4 1.5 -4 1.5 -1.5 4 -1.5 -4 -4 -1.5 4 -1.5z"/><path class="spark" d="M296 160 l1.2 3 3 1.2 -3 1.2 -1.2 3 -1.2 -3 -3 -1.2 3 -1.2z"/></g>
           </g>
           <!-- WOONKAMER -->
@@ -430,6 +443,18 @@ label.f{display:grid;gap:4px;font-size:.82rem;color:var(--muted);font-weight:600
             <path d="M18 368 l3-10 2 10 3-12 2 12"/><path d="M92 392 l3-9 2 9 3-11 2 11"/><path d="M262 396 l3-9 2 9 3-11 2 11"/><path d="M58 400 l2-7 2 7 2-9 2 9"/>
           </g>
         </g>
+        <!-- PRULLENBAK -->
+        <g class="spot outside" data-spot="afval">
+          <rect x="96" y="384" width="56" height="4" rx="2" fill="#000" opacity=".12"/>
+          <g id="bags" opacity="0"><ellipse cx="92" cy="380" rx="8" ry="7" fill="#2b2d2f"/><path d="M88 373 l4 -5 l4 5" fill="#2b2d2f"/><ellipse cx="156" cy="382" rx="6" ry="5.5" fill="#3a3d40"/><rect x="99" y="388" width="6" height="3" fill="#f1ede4" transform="rotate(18 102 389)"/><rect x="146" y="389" width="5" height="3" fill="#e8c77a" transform="rotate(-25 148 390)"/><circle cx="114" cy="391" r="1.6" fill="#c45d5d"/></g>
+          <path d="M100 360 L118 360 L116.5 386 L101.5 386Z" fill="#5c6166"/><circle cx="103" cy="386" r="2.6" fill="#2a2e33"/>
+          <path d="M124 360 L142 360 L140.5 386 L125.5 386Z" fill="#4f7d3c"/><circle cx="139" cy="386" r="2.6" fill="#2a2e33"/>
+          <path d="M104 368h10M128 368h10" stroke="#000" stroke-opacity=".18" stroke-width="1.2"/>
+          <g id="over1" opacity="0"><ellipse cx="109" cy="357" rx="9" ry="5" fill="#2b2d2f"/><path d="M106 352 l3 -5 l3 5" fill="#2b2d2f"/></g>
+          <g id="over2" opacity="0"><ellipse cx="133" cy="357" rx="8" ry="4.5" fill="#7a9a3a"/><path d="M128 355 q3 -6 6 -1" stroke="#c96c3a" stroke-width="2" fill="none"/></g>
+          <rect id="lid1" x="98.5" y="356" width="21" height="5" rx="1.6" fill="#4a4f54"/>
+          <rect id="lid2" x="122.5" y="356" width="21" height="5" rx="1.6" fill="#3f6a30"/>
+        </g>
         <path class="outside" d="M182 334 L214 334 L226 410 L170 410 Z" fill="#cfc8b8"/>
         <path class="outside" d="M330 334 L420 334 L420 410 L322 410 Z" fill="#c4bdae"/>
         <!-- BRIEVENBUS (hal) -->
@@ -449,6 +474,8 @@ label.f{display:grid;gap:4px;font-size:.82rem;color:var(--muted);font-weight:600
           <path id="carshine" d="M14 18 Q30 15 46 17" stroke="#ffffff" stroke-width="2" fill="none" opacity="0" stroke-linecap="round"/>
         </g>
         <g id="leaves" opacity="0"></g>
+        <g id="houseglitter" pointer-events="none"></g>
+        <g id="fx" pointer-events="none"></g>
         <g id="markers" pointer-events="none"></g>
       </svg>
     </div>
