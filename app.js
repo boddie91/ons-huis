@@ -657,7 +657,7 @@ async function setWeer(w){ return put('household','main',w==='auto'?{weer:null,w
 function safe(p){ Promise.resolve(p).catch(e=>{ $('#banner').hidden=false; $('#banner').textContent=(e&&e.code==='offline')?'Geen internet: je wijziging is niet opgeslagen. Probeer het zo nog eens.':'Opslaan lukte niet: '+(e&&e.message||'onbekende fout')+'. Probeer het zo nog eens.'; Store.resetSince(); poll(); }); }
 
 /* ---------- events ---------- */
-function showTab(v){ document.querySelectorAll('.tab').forEach(t=>t.setAttribute('aria-selected',t.dataset.v===v)); ['huis','lijst','kalender','punten','inst'].forEach(x=>$('#v-'+x).hidden=x!==v); renderKalender(); if(v==='punten') renderRewardSettings(); window.scrollTo(0,0); if(v==='inst') fillSettings(); renderLijst(); }
+function showTab(v){ document.querySelectorAll('.tab').forEach(t=>t.setAttribute('aria-selected',t.dataset.v===v)); ['huis','lijst','kalender','punten','inst'].forEach(x=>$('#v-'+x).hidden=x!==v); renderKalender(); if(v==='punten') renderRewardSettings(); window.scrollTo(0,0); if(v==='inst'){ instPage=null; fillSettings(); } renderLijst(); }
 document.addEventListener('click',e=>{
   const gEl=e.target.closest('[data-group]'); if(gEl&&!e.target.closest('#sheet')){ openGroup(gEl.dataset.group); return; }
   const goEl=e.target.closest('[data-gospot]'); if(goEl&&goEl.dataset.gospot==='kalender'){ closeSheet(); showTab('kalender'); return; } if(goEl){ openFrom=openSpot.slice(6); openSpot=goEl.dataset.gospot; openSub=null; renderSheet(); $('#sheet').scrollTop=0; return; }
@@ -688,6 +688,7 @@ document.addEventListener('click',e=>{
   if(b.dataset.calnav){ const n=b.dataset.calnav; if(n==='nu'){ const t=new Date(); calMonth=new Date(t.getFullYear(),t.getMonth(),1); calSel=ymd(t); } else calMonth=new Date(calMonth.getFullYear(),calMonth.getMonth()+(n==='+'?1:-1),1); renderKalender(); return; }
   if(b.dataset.apdel){ if(!b.dataset.armed){ b.dataset.armed='1'; b.textContent='Zeker?'; return; } const id=b.dataset.apdel; safe(del('apparaten',id)); S.tasks.filter(t=>t.apparaat===id).forEach(t=>safe(put('tasks',t.id,{apparaat:null},true))); return; }
   if(b.dataset.apfromfoto){ const f=S.fotos.find(x=>x.id===b.dataset.apfromfoto); if(f){ b.disabled=true; safe(put('apparaten',uid(),{spot:f.spot,naam:f.notitie?f.notitie.slice(0,80):(SP[f.spot]?.name||'Apparaat'),merk:f.merk||'',type:f.type||'',bouwjaar:'',notitie:'',links:'',fotoId:f.id})); } return; }
+  if(b.dataset.instpage!==undefined){ instPage=b.dataset.instpage||null; fillSettings(); window.scrollTo(0,0); return; }
   if(b.dataset.filter){ lsSet('onshuis-filter',b.dataset.filter==='mij'?'mij':null); renderHome(); return; }
   if(b.dataset.prepcheck){ const key=b.dataset.prepcheck; if(b.checked) safe(regel(key)); else { const [ek]=key.split('|'); safe(del('geregeld',key.replace(/[^A-Za-z0-9_\-.~:@+]/g,'_').slice(0,190))); if(key.endsWith('|a')&&S.geregeld[ek]) safe(del('geregeld',ek.replace(/[^A-Za-z0-9_\-.~:@+]/g,'_').slice(0,190))); } return; }
   if(b.dataset.prepx){ const box=b.closest('.prep-acts'); const k=esc(b.dataset.prepx); box.classList.add('ask'); box.innerHTML=`<span class="muted" style="font-size:.78rem">Weghalen:</span><button class="btn ghost small" data-prepskip="${k}">Alleen dit jaar</button><button class="btn ghost small" data-prepdel="${k}">Altijd</button><button class="btn ghost small" data-prepcancel="1" aria-label="Annuleren">Terug</button>`; return; }
@@ -750,7 +751,18 @@ function zoekUI(inp,out,mode){ const q=inp.value.trim(); if(!q) return; out.text
 
 /* ---------- settings ---------- */
 const PF=[['naam','p-naam','Naam'],['verjaardag','p-verjaardag','Verjaardag'],['kleding','p-kleding','Kledingmaat'],['sok','p-sok','Sokmaat'],['schoen','p-schoen','Schoenmaat'],['eten','p-eten','Eten en dieet'],['merken','p-merken','Merken'],['wens','p-wens','Cadeau-ideeën'],['overig','p-overig','Verder']];
+let instPage=null;
+function renderInstNav(){
+  const bw=bewoners(), other=bw.find(b=>b.id!==S.meId), me=S.profiles[S.meId]||{};
+  const pages=[['profiel','Mijn profiel',me.naam||personName(S.meId)||'Naam, maten, verjaardag'],['partner',other?personName(other.id):'Partner','Wat je partner over zichzelf invulde'],['huishouden','Ons huishouden',S.hh.naam||'Naam en omschrijving van het huis'],['apparaten','Apparaten',S.apparaten.length?`${S.apparaten.length} ${S.apparaten.length===1?'apparaat':'apparaten'}`:'Merk, type en handleidingen'],['bewoners','Bewoners',bw.map(b=>b.naam).join(' en ')],['weer','Woonplaats en weer',S.hh.plaats?S.hh.plaats.naam:'Nog niet ingesteld'],['apparaat','Dit apparaat',Store.remote?'Gekoppeld, huiscode':'Proefmodus']];
+  const cur=pages.find(p=>p[0]===instPage);
+  $('#inst-menu').hidden=!!instPage; $('#inst-back').hidden=!instPage;
+  $('#inst-title').textContent=cur?cur[1]:'Instellingen'; $('#inst-eyebrow').textContent=cur?'Instellingen':'Ons Huis';
+  document.querySelectorAll('#v-inst [data-page]').forEach(el=>{ el.hidden=el.dataset.page!==instPage; });
+  if(!instPage) $('#inst-menu').innerHTML=pages.map(([id,l,s])=>`<button class="menu-item" data-instpage="${id}"><span class="mi-t"><b>${esc(l)}</b><span>${esc(s)}</span></span><span class="chev" aria-hidden="true">›</span></button>`).join('');
+}
 function fillSettings(){
+  renderInstNav();
   if(!(document.activeElement&&document.activeElement.closest&&document.activeElement.closest('#ap-settings'))) $('#ap-settings').innerHTML=apparatenSettingsHtml();
   renderRewardSettings();
   const me=S.profiles[S.meId]||{}; PF.forEach(([k,id])=>{ const el=$('#'+id); if(document.activeElement!==el) el.value=me[k]||''; });

@@ -238,6 +238,16 @@ details.hoe summary::-webkit-details-marker{display:none}
 .links.auto a{font-weight:500}
 .links.auto a::before{content:"↗ ";color:var(--muted)}
 textarea{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 10px;width:100%;resize:vertical}
+#v-inst [data-page] > h2,#v-inst [data-page] > .row > h2{display:none}
+#v-inst [data-page] > .row:has(> h2){justify-content:flex-end!important}
+.menu{padding:4px 0;display:grid}
+.menu-item{display:flex;align-items:center;gap:12px;background:none;border:0;border-top:1px solid var(--line);padding:13px 14px;text-align:left;width:100%}
+.menu-item:first-child{border-top:0}
+.menu-item:hover{background:var(--surface-2)}
+.menu-item .mi-t{flex:1;min-width:0;display:grid;gap:1px}
+.menu-item .mi-t b{font-weight:600}
+.menu-item .mi-t span{font-size:.82rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.menu-item .chev{color:var(--muted);font-size:1.2rem}
 .badge-pts{font-size:.72rem;font-weight:700;color:var(--accent);border:1px solid var(--accent);border-radius:6px;padding:1px 5px;white-space:nowrap}
 
 /* Chat */
@@ -582,8 +592,10 @@ label.f{display:grid;gap:4px;font-size:.82rem;color:var(--muted);font-weight:600
 
   <!-- INSTELLINGEN -->
   <section id="v-inst" class="stack" hidden>
-    <div class="top"><div><div class="eyebrow">Ons Huis</div><h1>Instellingen</h1></div></div>
-    <form class="card stack" id="f-me">
+    <button class="back" id="inst-back" data-instpage="" hidden>‹ Instellingen</button>
+    <div class="top"><div><div class="eyebrow" id="inst-eyebrow">Ons Huis</div><h1 id="inst-title">Instellingen</h1></div></div>
+    <nav class="card menu" id="inst-menu" aria-label="Instellingen"></nav>
+    <form class="card stack" id="f-me" data-page="profiel">
       <div class="row" style="justify-content:space-between"><h2>Mijn profiel</h2><span class="saved" id="me-saved" hidden>Opgeslagen</span></div>
       <div class="form-grid">
         <label class="f">Naam<input type="text" id="p-naam" autocomplete="given-name"></label>
@@ -598,8 +610,8 @@ label.f{display:grid;gap:4px;font-size:.82rem;color:var(--muted);font-weight:600
       <label class="f">Verder handig om te weten<textarea id="p-overig" rows="3" placeholder="bijv. werkt ma–do, sport op dinsdag, houdt niet van strijken"></textarea></label>
       <div><button class="btn" type="submit">Profiel opslaan</button></div>
     </form>
-    <div class="card stack" id="partner-card"></div>
-    <form class="card stack" id="f-hh">
+    <div class="card stack" id="partner-card" data-page="partner"></div>
+    <form class="card stack" id="f-hh" data-page="huishouden">
       <div class="row" style="justify-content:space-between"><h2>Ons huishouden</h2><span class="saved" id="hh-saved" hidden>Opgeslagen</span></div>
       <div class="form-grid">
         <label class="f">Naam van het huis<input type="text" id="h-naam" placeholder="Ons huis"></label>
@@ -607,20 +619,20 @@ label.f{display:grid;gap:4px;font-size:.82rem;color:var(--muted);font-weight:600
       <label class="f">Over het huis<textarea id="h-over" rows="2" placeholder="bijv. rijtjeshuis met tuin op het zuiden, cv-ketel uit 2015, Toyota Yaris"></textarea></label>
       <div><button class="btn" type="submit">Huishouden opslaan</button></div>
     </form>
-    <div class="card stack" id="ap-settings"></div>
-    <form class="card stack" id="f-bew">
+    <div class="card stack" id="ap-settings" data-page="apparaten"></div>
+    <form class="card stack" id="f-bew" data-page="bewoners">
       <div class="row" style="justify-content:space-between"><h2>Bewoners</h2><span class="saved" id="bw-saved" hidden>Opgeslagen</span></div>
       <div class="form-grid"><label class="f">Bewoner 1<input type="text" id="bw-1"></label><label class="f">Bewoner 2<input type="text" id="bw-2"></label></div>
       <div><button class="btn ghost small" type="submit">Namen opslaan</button></div>
     </form>
-    <form class="card stack" id="f-plaats">
+    <form class="card stack" id="f-plaats" data-page="weer">
       <h2>Woonplaats voor het weer</h2>
       <p class="muted" id="pl-now" style="margin:0"></p>
       <div class="row"><input type="text" id="pl-q" class="grow" placeholder="Bijv. Maastricht" aria-label="Woonplaats"><button class="btn" type="submit">Zoeken</button></div>
       <div id="pl-res" class="muted" aria-live="polite"></div>
       <p class="muted" style="margin:0;font-size:.82rem">Het weer komt van Open-Meteo, gratis en zonder account. Sneeuw, vorst en storm maken de bijbehorende taken vanzelf wakker.</p>
     </form>
-    <div class="card stack">
+    <div class="card stack" data-page="apparaat">
       <h2>Dit apparaat</h2>
       <p class="muted" id="mode-txt" style="margin:0"></p>
       <div><button class="btn ghost small" id="code-reset">Huiscode opnieuw invullen</button></div>
