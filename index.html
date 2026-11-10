@@ -368,7 +368,19 @@ label.f{display:grid;gap:4px;font-size:.82rem;color:var(--muted);font-weight:600
             <rect x="274" y="148" width="28" height="24" rx="2" fill="#f4f4f2" stroke="#c8d3d6"/>
             <rect x="277" y="151" width="22" height="18" fill="#cfe2ea"/>
             <rect x="266" y="172" width="9" height="24" rx="2" fill="#e68f6d"/>
-            <rect id="bathgrime" x="202" y="178" width="112" height="46" fill="url(#smudge)" opacity="0"/>
+            <g id="bathgrime" opacity="0">
+              <path d="M222 153 q1.5 10 -1 21 M228 153 q-1 8 1 17 M218 160 q1 6 0 11" stroke="#d6d0bd" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+              <path d="M202 178 q7 3 4 10 q-3 7 2 13 L202 206Z" fill="#4d5a45" opacity=".6"/>
+              <path d="M314 178 q-8 3 -5 10 q1 6 -4 10 L314 202Z" fill="#4d5a45" opacity=".55"/>
+              <path d="M202 136 q14 4 28 0 q-6 7 -19 7 q-6 1 -9 4Z" fill="#5a6450" opacity=".45"/>
+              <path d="M240 183 q7 -5 12 0 q5 6 -2 9 q-7 3 -11 -1 q-3 -5 1 -8Z" fill="#b39a62" opacity=".6"/>
+              <path d="M266 189 q5 -3 9 0 q2 5 -2 7 q-6 1 -7 -7Z" fill="#a88c5a" opacity=".55"/>
+              <path d="M279 155 q5 -3 9 2 q-3 5 -9 -2Z M291 162 q4 -2 6 1 q-3 4 -6 -1Z" fill="#bdb6a2" opacity=".85"/>
+              <path d="M209 205.5 h52" stroke="#8a6a3a" stroke-width="1.8" stroke-linecap="round" opacity=".85"/>
+              <ellipse cx="236" cy="222" rx="18" ry="2.3" fill="#9cc6d8" opacity=".9"/><ellipse cx="230" cy="221.4" rx="5" ry=".7" fill="#ffffff" opacity=".85"/>
+              <ellipse cx="272" cy="222.8" rx="8" ry="1.6" fill="#9cc6d8" opacity=".85"/>
+              <path d="M262 216 q6 -3 12 0 l1 6.5 h-14z" fill="#e68f6d"/><path d="M265 218 h7" stroke="#c96f50" stroke-width=".8"/>
+            </g>
             <g id="toiletdirt" opacity="0"><ellipse cx="295" cy="206.5" rx="8" ry="1.8" fill="none" stroke="#8a6a2a" stroke-width="1.4"/><path d="M289 209 q2 5 0 9 M300 209 q-1 4 1 8" stroke="#a88a3a" stroke-width="1.1" fill="none"/><ellipse cx="297" cy="223" rx="9" ry="1.6" fill="#e3cf6e" opacity=".8"/><rect x="283" y="211" width="5" height="9" rx="1" fill="#f2efe6" stroke="#cfc8b8" transform="rotate(-12 285 215)"/></g>
             <g id="bathspark" opacity="0" fill="#fff"><path class="spark" d="M240 186 l1.5 4 4 1.5 -4 1.5 -1.5 4 -1.5 -4 -4 -1.5 4 -1.5z"/><path class="spark" d="M296 160 l1.2 3 3 1.2 -3 1.2 -1.2 3 -1.2 -3 -3 -1.2 3 -1.2z"/></g>
           </g>
@@ -377,7 +389,7 @@ label.f{display:grid;gap:4px;font-size:.82rem;color:var(--muted);font-weight:600
             <rect x="86" y="234" width="88" height="96" fill="#f1e5cd"/>
             <rect class="glass" x="98" y="244" width="40" height="30" fill="#9fcbe4" stroke="#fff" stroke-width="2.5"/>
             <path d="M118 244v30M98 259h40" stroke="#fff" stroke-width="2"/>
-            <rect id="wingrime" x="99" y="245" width="38" height="28" fill="url(#smudge)" opacity="0"/>
+            <g id="wingrime" opacity="0"><rect x="99" y="245" width="38" height="28" fill="#8f876f" opacity=".35"/><path d="M102 248 q8 6 4 14 M126 248 q-6 8 2 16 M108 268 q9 -3 18 0" stroke="#6f6852" stroke-width="2.2" fill="none" opacity=".55" stroke-linecap="round"/></g>
             <circle cx="150" cy="238" r="4" fill="#ffffff" stroke="#c9c2b2"/>
             <rect x="86" y="326" width="88" height="4" fill="url(#wood)"/>
             <ellipse cx="124" cy="327" rx="34" ry="2.6" fill="#c4746b"/>
@@ -468,9 +480,12 @@ label.f{display:grid;gap:4px;font-size:.82rem;color:var(--muted);font-weight:600
         <g class="spot outside" data-spot="auto" transform="translate(328 352)">
           <path d="M6 26 Q6 14 18 12 L30 2 Q34 0 40 0 L64 0 Q70 0 74 6 L82 14 Q90 16 90 26 L90 32 L6 32 Z" fill="#3f78b5"/>
           <path d="M33 5 L40 3 L54 3 L54 13 L26 13 Z M58 3 L66 3 Q70 4 74 12 L58 13 Z" fill="#a9d4e6"/>
-          <rect id="cardirt" x="6" y="14" width="84" height="18" fill="url(#mud)" opacity="0"/>
+          <g id="carwindirt" opacity="0"><path d="M33 5 L40 3 L54 3 L54 13 L26 13 Z M58 3 L66 3 Q70 4 74 12 L58 13 Z" fill="#8c7a5a" opacity=".6"/><path d="M30 12 q10 -7 22 -1 M60 12 q6 -5 12 0" stroke="#6e5c3e" stroke-width="1.6" fill="none" opacity=".75" stroke-linecap="round"/></g>
+          <g id="carmud" opacity="0" fill="#6b5536"><path d="M8 32 q3 -8 9 -6 q4 -6 8 2 q3 -3 5 4Z"/><path d="M56 32 q4 -9 9 -5 q5 -4 8 3 q4 -2 6 2Z"/><path d="M38 26 q3 -2 5 1 q-2 3 -5 -1Z"/><path d="M84 25 q2 -1 3 1 l-1 5 q-2 -2 -2 -6Z"/></g>
+          <g id="hoodopen" opacity="0"><path d="M75 13 L89 15 Q90 17 90 20 L76 17Z" fill="#2a2e33"/><rect x="78" y="15" width="8" height="3.5" rx=".8" fill="#6b7178"/><path d="M74 13.5 L76.5 11.5 L84 -10 L87 -9 L78.5 14Z" fill="#4a86c4" stroke="#2f5f94" stroke-width=".8"/></g>
           <circle cx="24" cy="33" r="8" fill="#2a2e33"/><circle cx="24" cy="33" r="3" fill="#9aa1a8"/>
-          <circle cx="72" cy="33" r="8" fill="#2a2e33"/><circle cx="72" cy="33" r="3" fill="#9aa1a8"/>
+          <circle cx="72" cy="33" r="8" fill="#2a2e33"/><circle id="hub2" cx="72" cy="33" r="3" fill="#9aa1a8"/>
+          <ellipse id="hubloose" cx="-6" cy="39" rx="4.5" ry="1.8" fill="#c4c9ce" stroke="#7d848a" stroke-width=".7" opacity="0" transform="rotate(-12 -6 39)"/>
           <path id="carshine" d="M14 18 Q30 15 46 17" stroke="#ffffff" stroke-width="2" fill="none" opacity="0" stroke-linecap="round"/>
         </g>
         <g id="leaves" opacity="0"></g>

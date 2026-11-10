@@ -186,7 +186,7 @@ function drawScene(){
   const cv=spotHealth('cv'), cl=$('#cvlight'); cl.setAttribute('fill',cv>=.6?'#5fd17a':cv>=.3?'#f0b84a':'#e5533f'); cl.classList.toggle('blink',cv<.3);
   const b=spotHealth('bed'); setA('rumple','opacity',Math.max(0,1-b*1.4)); setA('floormess','opacity',b<.35?1:0); setA('duvet','fill',lerp('#9a8f86','#7fa6d6',b));
   const k=spotHealth('kast'); setA('kastmess','opacity',Math.max(0,1-k*1.5));
-  const ba=spotHealth('badkamer'); setA('bathgrime','opacity',Math.max(0,.85-ba*1.1)); setA('bathspark','opacity',ba>.75?(ba-.75)*4:0);
+  const ba=spotHealth('badkamer'); setA('bathgrime','opacity',Math.max(0,Math.min(1,1-ba*1.3)).toFixed(2)); setA('bathspark','opacity',ba>.75?(ba-.75)*4:0);
   const w=spotHealth('woonkamer'); setA('dust','opacity',Math.max(0,1-w*1.4)); setA('webwk','opacity',Math.max(0,1-w*1.8)); setA('wingrime','opacity',Math.max(0,.8-w));
   const h=spotHealth('hal'); setA('postpile','opacity',h<.5?1:0); setA('letters','opacity',h<.4?1:0);
   const rem=reminders(); setA('calbadge','opacity',rem.length?1:0); $('#calnum').textContent=now.getDate();
@@ -199,7 +199,8 @@ function drawScene(){
   setA('over1','opacity',af<.45?1:0); setA('over2','opacity',af<.3?1:0); setA('bags','opacity',af<.2?1:0);
   setA('lid1','transform',af<.45?'rotate(-24 98.5 358)':''); setA('lid2','transform',af<.3?'rotate(-18 122.5 358)':'');
   const m=spotHealth('kluis'); setA('vaultglow','opacity',m>.6?((m-.6)*1.1).toFixed(2):0); setA('cobweb','opacity',Math.max(0,1-m*1.6));
-  const a=spotHealth('auto'); setA('cardirt','opacity',Math.max(0,.95-a*1.1)); setA('carshine','opacity',a>.7?1:0);
+  const a=spotHealth('auto'); setA('carmud','opacity',Math.max(0,Math.min(1,.95-a*1.1)).toFixed(2)); setA('carshine','opacity',a>.7?1:0);
+  setA('carwindirt','opacity',a<.6?Math.min(1,(.6-a)*2.5).toFixed(2):0); setA('hubloose','opacity',a<.4?1:0); setA('hub2','opacity',a<.4?0:1); setA('hoodopen','opacity',a<.25?1:0);
   $('#markers').innerHTML=SPOTS.map(s=>{ const v=spotHealth(s.id); if(v<.3) return `<circle cx="${s.x}" cy="${s.y}" r="5" fill="none" stroke="#e5533f" stroke-width="2" class="pulse"/><circle cx="${s.x}" cy="${s.y}" r="3.2" fill="#e5533f"/>`; return ''; }).join('');
   // vuil en glans
   let fxs='';
