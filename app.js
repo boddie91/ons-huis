@@ -409,18 +409,26 @@ function uitlegFields(t){ t=t||{}; const spot=t.spot||openSpot; const aps=S.appa
     <textarea name="links" rows="2" placeholder="Links, één per regel. Bijv: Uitlegfilmpje | https://..." aria-label="Links">${esc(t.links||'')}</textarea>
   </div></details>`; }
 function readUitleg(f){ if(!f.elements.stappen) return {}; const ap=f.elements.apparaat.value; return {apparaat:S.apparaten.some(a=>a.id===ap)?ap:null,stappen:f.elements.stappen.value.slice(0,2000),materiaal:f.elements.materiaal.value.trim().slice(0,120),links:f.elements.links.value.slice(0,2000)}; }
-function apForm(a,id){ a=a||{}; return `<form class="stack" ${id?`data-apedit="${id}"`:'id="f-ap"'} style="gap:6px">
-  <input type="text" name="naam" placeholder="Wat is het? Bijv. afzuigkap" value="${esc(a.naam||'')}" required aria-label="Apparaat">
+function apForm(a,id){ a=a||{}; const sp=a.spot||'keuken'; return `<form class="stack" ${id?`data-apedit="${id}"`:'id="f-ap"'} style="gap:6px">
+  <div class="row"><input type="text" name="naam" placeholder="Wat is het? Bijv. afzuigkap" value="${esc(a.naam||'')}" required aria-label="Apparaat" style="flex:1 1 160px"><select name="spot" aria-label="Plek" style="flex:0 1 170px">${SPOTS.filter(s=>s.id!=='kalender').map(s=>`<option value="${s.id}" ${s.id===sp?'selected':''}>${esc(s.name)}</option>`).join('')}</select></div>
   <div class="row"><input type="text" name="merk" placeholder="Merk" value="${esc(a.merk||'')}" style="flex:1 1 100px" aria-label="Merk"><input type="text" name="type" placeholder="Type of model" value="${esc(a.type||'')}" style="flex:1 1 120px" aria-label="Type"><input type="text" name="bouwjaar" placeholder="Bouwjaar" value="${esc(a.bouwjaar||'')}" style="flex:0 1 90px" aria-label="Bouwjaar"></div>
   <input type="text" name="notitie" placeholder="Notitie, bijv. filtermaat of garantie tot" value="${esc(a.notitie||'')}" aria-label="Notitie">
   <textarea name="links" rows="2" placeholder="Links, één per regel. Bijv: Handleiding | https://..." aria-label="Links">${esc(a.links||'')}</textarea>
   <div class="row"><button class="btn small" type="submit">${id?'Bewaar':'Apparaat toevoegen'}</button>${id?`<button class="btn ghost small" type="button" data-apdel="${id}">Verwijder</button>`:''}</div></form>`; }
-function readAp(f){ return {spot:openSpot,naam:f.elements.naam.value.trim().slice(0,80),merk:f.elements.merk.value.trim().slice(0,60),type:f.elements.type.value.trim().slice(0,80),bouwjaar:f.elements.bouwjaar.value.trim().slice(0,20),notitie:f.elements.notitie.value.trim().slice(0,300),links:f.elements.links.value.slice(0,2000)}; }
+function readAp(f){ return {spot:SP[f.elements.spot.value]?f.elements.spot.value:'keuken',naam:f.elements.naam.value.trim().slice(0,80),merk:f.elements.merk.value.trim().slice(0,60),type:f.elements.type.value.trim().slice(0,80),bouwjaar:f.elements.bouwjaar.value.trim().slice(0,20),notitie:f.elements.notitie.value.trim().slice(0,300),links:f.elements.links.value.slice(0,2000)}; }
 function apparatenHtml(){ const list=S.apparaten.filter(a=>a.spot===openSpot).sort((x,y)=>(x.naam||'').localeCompare(y.naam||''));
   const fotos=S.fotos.filter(f=>f.spot===openSpot&&(f.merk||f.type)&&!S.apparaten.some(a=>a.fotoId===f.id));
   return `<div class="stack">${list.length?list.map(a=>{ const n=S.tasks.filter(t=>t.apparaat===a.id).length; return `<div class="card stack" style="gap:6px"><div><b>${esc(a.naam)}</b>${a.merk||a.type?` <span class="muted">· ${esc([a.merk,a.type].filter(Boolean).join(' '))}</span>`:''}${a.bouwjaar?` <span class="muted">· ${esc(a.bouwjaar)}</span>`:''}</div>${a.notitie?`<span class="muted" style="font-size:.88rem">${esc(a.notitie)}</span>`:''}${linksHtml(a.links)}<span class="muted" style="font-size:.8rem">${n?`Gekoppeld aan ${n} ${n===1?'taak':'taken'}`:'Nog niet gekoppeld aan een taak. Doe dat bij Aanpassen van een taak.'}</span><details class="edit"><summary>Aanpassen</summary>${apForm(a,a.id)}</details></div>`; }).join(''):'<div class="empty">Nog geen apparaten bij deze plek.</div>'}
   ${fotos.length?`<div class="suggest">${fotos.map(f=>`<button data-apfromfoto="${f.id}">+ ${esc([f.merk,f.type].filter(Boolean).join(' '))} (uit foto)</button>`).join('')}</div>`:''}
   <div class="card stack"><h3>Apparaat toevoegen</h3>${apForm(null,null)}</div></div>`; }
+
+function apparatenSettingsHtml(){
+  const groups=SPOTS.filter(s=>s.id!=='kalender').map(s=>({s,list:S.apparaten.filter(a=>a.spot===s.id).sort((x,y)=>(x.naam||'').localeCompare(y.naam||''))})).filter(g=>g.list.length);
+  const fotos=S.fotos.filter(f=>(f.merk||f.type)&&!S.apparaten.some(a=>a.fotoId===f.id));
+  return `<h2>Apparaten</h2><p class="muted" style="margin:0">Noteer merk en type, dan geeft "Hoe doe ik dit?" bij een taak meteen de juiste handleiding, filmpjes en materialen. Koppel een taak aan een apparaat bij Aanpassen van die taak.</p>
+  ${groups.length?groups.map(g=>`<div class="stack" style="gap:6px"><div class="eyebrow">${esc(g.s.name)}</div><ul class="list">${g.list.map(a=>{ const n=S.tasks.filter(t=>t.apparaat===a.id).length; return `<li class="ev"><div><b>${esc(a.naam)}</b>${a.merk||a.type?` <span class="muted">· ${esc([a.merk,a.type].filter(Boolean).join(' '))}</span>`:''}${a.bouwjaar?` <span class="muted">· ${esc(a.bouwjaar)}</span>`:''}</div>${a.notitie?`<div class="muted" style="font-size:.85rem">${esc(a.notitie)}</div>`:''}${linksHtml(a.links)}<div class="muted" style="font-size:.78rem">${n?`Gekoppeld aan ${n} ${n===1?'taak':'taken'}`:'Nog aan geen taak gekoppeld'}</div><details class="edit"><summary>Aanpassen</summary><div style="margin-top:6px">${apForm(a,a.id)}</div></details></li>`; }).join('')}</ul></div>`).join(''):'<div class="empty">Nog geen apparaten genoteerd.</div>'}
+  ${fotos.length?`<div class="stack" style="gap:6px"><span class="muted" style="font-size:.85rem">Uit jullie foto's:</span><div class="suggest">${fotos.map(f=>`<button data-apfromfoto="${f.id}">+ ${esc([f.merk,f.type].filter(Boolean).join(' '))}</button>`).join('')}</div></div>`:''}
+  <details class="vv"><summary>Apparaat toevoegen</summary><div style="margin-top:6px">${apForm(null,null)}</div></details>`; }
 
 function fotoCard(f){
   return `<div class="foto"><button class="foto-open" data-fopen="${f.id}" aria-label="Foto groot bekijken"><img src="${esc(safeImg(f.thumb))}" alt="Foto bij ${esc(SP[f.spot]?.name||'')}"></button><form class="stack" data-fmeta="${f.id}" style="gap:6px;min-width:0">
@@ -548,7 +556,7 @@ function subsFor(spot){
   const na=S.apparaten.filter(a=>a.spot===spot).length; const apTile={id:'apparaten',name:'Apparaten',h:null,icon:'wrench',sub:na?`${na} ${na===1?'apparaat':'apparaten'}`:'merk, type, handleiding'};
 
   out.push({id:'eenmalig',name:'Eenmalig',h:healthOf(once),sub:once.length?`${once.length} open${late?` · ${late} te laat`:''}`:'niets open'});
-  out.push(apTile); out.push(fotoTile);
+  out.push(fotoTile);
   return out;
 }
 function newForm(cat,mode){
@@ -717,8 +725,8 @@ document.addEventListener('submit',e=>{
     if(f.dataset.mode==='once'){ safe(addOnce(openSpot,n,f.elements.due.value,cat,pts,wie,readVervolg(f),readUitleg(f))); if(openSub&&openSub!=='eenmalig'&&openSub!==cat) openSub=cat; }
     else { const R=readRitme(f); safe(addTask(openSpot,n,R.everyDays,cat,pts,R,wie,readVervolg(f),readUitleg(f))); if(openSub&&openSub!==cat) openSub=cat; } }
   else if(f.dataset.edit){ safe(put('tasks',f.dataset.edit,{name:f.elements.name.value.trim()||'Taak',...(({perSeizoen,trigger,everyDays})=>({perSeizoen,trigger,everyDays}))(readRitme(f)),spot:f.elements.spot.value,cat:f.elements.cat.value,wie:validWie(f.elements.wie.value),vervolg:readVervolg(f),...readUitleg(f),punten:clampPts(f.elements.punten.value,null)},true)); }
-  else if(f.id==='f-ap'){ const d=readAp(f); if(d.naam) safe(put('apparaten',uid(),d)); }
-  else if(f.dataset.apedit){ const d=readAp(f); delete d.spot; if(d.naam) safe(put('apparaten',f.dataset.apedit,d,true)); }
+  else if(f.id==='f-ap'){ const d=readAp(f); if(document.activeElement) document.activeElement.blur(); if(d.naam) safe(put('apparaten',uid(),d)); }
+  else if(f.dataset.apedit){ const d=readAp(f); if(document.activeElement) document.activeElement.blur(); if(d.naam) safe(put('apparaten',f.dataset.apedit,d,true)); }
   else if(f.id==='f-kal-af'){ const t=f.elements.titel.value.trim(); if(t) safe(addAfspraak(t.slice(0,120),calSel,f.elements.prep.value.trim().slice(0,240))); }
   else if(f.dataset.onceedit){ const due=f.elements.due.value; safe(put('tasks',f.dataset.onceedit,{name:f.elements.name.value.trim()||'Taak',due:/^\d{4}-\d{2}-\d{2}$/.test(due)?due:null,wie:validWie(f.elements.wie.value),vervolg:readVervolg(f),...readUitleg(f)},true)); }
   else if(f.dataset.prepadd){ const e=events().find(x=>x.key===f.dataset.prepadd); const t=f.elements.titel.value.trim(); if(e&&t){ const items=prepItems(e).slice(); items.push({id:uid(),titel:t.slice(0,100),dagen:Math.max(0,Math.min(120,Number(f.elements.dagen.value)||7)),wie:validWie(f.elements.wie.value)}); openPrep.add(tplKey(e)); safe(savePrep(e,items)); } }
@@ -743,6 +751,7 @@ function zoekUI(inp,out,mode){ const q=inp.value.trim(); if(!q) return; out.text
 /* ---------- settings ---------- */
 const PF=[['naam','p-naam','Naam'],['verjaardag','p-verjaardag','Verjaardag'],['kleding','p-kleding','Kledingmaat'],['sok','p-sok','Sokmaat'],['schoen','p-schoen','Schoenmaat'],['eten','p-eten','Eten en dieet'],['merken','p-merken','Merken'],['wens','p-wens','Cadeau-ideeën'],['overig','p-overig','Verder']];
 function fillSettings(){
+  if(!(document.activeElement&&document.activeElement.closest&&document.activeElement.closest('#ap-settings'))) $('#ap-settings').innerHTML=apparatenSettingsHtml();
   renderRewardSettings();
   const me=S.profiles[S.meId]||{}; PF.forEach(([k,id])=>{ const el=$('#'+id); if(document.activeElement!==el) el.value=me[k]||''; });
   $('#h-naam').value=S.hh.naam||''; $('#h-over').value=S.hh.over||'';

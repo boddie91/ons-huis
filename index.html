@@ -262,7 +262,7 @@ label.f{display:grid;gap:4px;font-size:.82rem;color:var(--muted);font-weight:600
 .tabs{position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--surface);border-top:1px solid var(--line);
   padding:6px max(16px,env(safe-area-inset-right,0px)) calc(6px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
 .tabs-in{max-width:520px;margin:0 auto;display:grid;grid-template-columns:repeat(5,1fr);gap:4px}
-.tab{background:none;border:0;border-radius:10px;padding:6px 2px;min-width:0;white-space:nowrap;display:grid;justify-items:center;gap:2px;font-size:.78rem;color:var(--muted);font-weight:600}
+.tab{background:none;border:0;border-radius:10px;padding:6px 1px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:grid;justify-items:center;gap:2px;font-size:.7rem;color:var(--muted);font-weight:600}
 .tab svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .tab[aria-selected="true"]{color:var(--accent);background:var(--surface-2)}
 .stack{display:grid;gap:12px}
@@ -582,7 +582,7 @@ label.f{display:grid;gap:4px;font-size:.82rem;color:var(--muted);font-weight:600
 
   <!-- INSTELLINGEN -->
   <section id="v-inst" class="stack" hidden>
-    <div class="top"><div><div class="eyebrow">Instellingen</div><h1>Over ons</h1></div></div>
+    <div class="top"><div><div class="eyebrow">Ons Huis</div><h1>Instellingen</h1></div></div>
     <form class="card stack" id="f-me">
       <div class="row" style="justify-content:space-between"><h2>Mijn profiel</h2><span class="saved" id="me-saved" hidden>Opgeslagen</span></div>
       <div class="form-grid">
@@ -607,6 +607,7 @@ label.f{display:grid;gap:4px;font-size:.82rem;color:var(--muted);font-weight:600
       <label class="f">Over het huis<textarea id="h-over" rows="2" placeholder="bijv. rijtjeshuis met tuin op het zuiden, cv-ketel uit 2015, Toyota Yaris"></textarea></label>
       <div><button class="btn" type="submit">Huishouden opslaan</button></div>
     </form>
+    <div class="card stack" id="ap-settings"></div>
     <form class="card stack" id="f-bew">
       <div class="row" style="justify-content:space-between"><h2>Bewoners</h2><span class="saved" id="bw-saved" hidden>Opgeslagen</span></div>
       <div class="form-grid"><label class="f">Bewoner 1<input type="text" id="bw-1"></label><label class="f">Bewoner 2<input type="text" id="bw-2"></label></div>
@@ -637,7 +638,7 @@ label.f{display:grid;gap:4px;font-size:.82rem;color:var(--muted);font-weight:600
   <button class="tab" role="tab" data-v="lijst" aria-selected="false"><svg viewBox="0 0 24 24"><path d="M5 7h14l-1.5 11a2 2 0 0 1-2 1.7h-7a2 2 0 0 1-2-1.7z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg>Lijst</button>
   <button class="tab" role="tab" data-v="kalender" aria-selected="false"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>Kalender</button>
   <button class="tab" role="tab" data-v="punten" aria-selected="false"><svg viewBox="0 0 24 24"><path d="M12 3l2.6 5.6 6 .7-4.5 4.1 1.2 6L12 16.4 6.7 19.4l1.2-6L3.4 9.3l6-.7z"/></svg>Punten</button>
-  <button class="tab" role="tab" data-v="inst" aria-selected="false"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4.5-6 8-6s7 2 8 6"/></svg>Over ons</button>
+  <button class="tab" role="tab" data-v="inst" aria-selected="false"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg>Instellingen</button>
 </div></nav>
 
 
