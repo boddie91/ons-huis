@@ -276,11 +276,11 @@ function renderRewards(){
   const samenPool=poolFor('samen',me).length, soloPool=poolFor('solo',me).length;
   const shortTxt=P.ids.length<2?'Zodra jullie allebei punten verdienen, telt de gezamenlijke pot.':P.short.length?P.short.map(id=>`${esc(personName(id))} nog ${P.need-P.share[id]}`).join(' · ')+` punten voor een eerlijk aandeel`:'Allebei genoeg bijgedragen';
   const st=swipeState();
-  const samenBtn=samenPool<2?`<button class="btn ghost small" data-v="inst">Zet gezamenlijke ideeën op de lijst om te swipen</button>`
+  const samenBtn=samenPool<2?`<button class="btn ghost small" data-v="punten">Zet gezamenlijke ideeën op de lijst om te swipen</button>`
     :`<button class="btn${st.match&&P.samenReady?'':' ghost'}" data-openswipe="1">${st.match?(P.samenReady?'Match! Bekijk en verzilver':'Er is een match, pot nog niet vol'):(st.remaining.length?`Swipe gezamenlijke wensen (${st.remaining.length} te gaan)`:'Swipen: wachten op je partner')}</button>`;
   const soloRows=P.ids.map(id=>{ const bal=Math.max(0,P.solo[id]); const ready=bal>=c.solo; return `<div class="pot"><div class="pot-head"><b><i class="dot" style="background:${personColor(id)}"></i>${esc(id===me?'Jouw pot':'Pot van '+personName(id))}</b><span class="pts">${bal} / ${c.solo}</span></div>
     <div class="bar"><span style="width:${Math.min(100,bal/c.solo*100)}%;background:${personColor(id)}"></span></div>
-    ${id===me&&ready?(soloPool?`<div><button class="btn" data-spin="solo">Draai jouw rad</button></div>`:`<div><button class="btn ghost small" data-v="inst">Voeg eerst een beloning voor jezelf toe</button></div>`):''}</div>`; }).join('');
+    ${id===me&&ready?(soloPool?`<div><button class="btn" data-spin="solo">Draai jouw rad</button></div>`:`<div><button class="btn ghost small" data-v="punten" data-goto="rw-settings">Voeg eerst een beloning voor jezelf toe</button></div>`):''}</div>`; }).join('');
   const open=S.gewonnen.filter(g=>!g.verzilverd&&(g.soort==='samen'||g.wie===me)).sort((a,b)=>(b.at||'').localeCompare(a.at||''));
   const ws=weekStart(), wk=S.log.filter(l=>new Date(l.at)>=ws), wkPts=wk.reduce((a,l)=>a+lp(l),0);
   $('#samen').innerHTML=`<div class="samen-head"><h2>Punten en beloningen</h2><span class="pts">deze week ${wk.length} taken · ${wkPts} punten</span></div>
@@ -291,7 +291,7 @@ function renderRewards(){
       ${samenBtn?`<div>${samenBtn}</div>`:''}</div>
     ${soloRows}
     ${open.length?`<div class="pot"><b style="font-family:var(--f-display)">Nog te verzilveren</b><ul class="win-list">${open.map(g=>`<li><input type="checkbox" data-redeem="${g.id}" aria-label="Verzilverd"><span>${esc(g.titel)} <span class="muted">· ${g.soort==='samen'?'samen':'voor jou'} · ${new Date(g.at).toLocaleDateString('nl-NL',{day:'numeric',month:'short'})}</span></span></li>`).join('')}</ul></div>`:''}
-    <div><button class="askbtn" data-v="inst">Beloningen en spelregels beheren</button></div>`;
+    <div><button class="askbtn" data-goto="rw-settings">Beloningen en spelregels beheren</button></div>`;
 }
 function renderRewardSettings(){
   const c=cfg(); ['c-samen','c-aandeel','c-solo'].forEach((id,i)=>{ const el=$('#'+id); if(document.activeElement!==el) el.value=[c.samen,c.aandeel,c.solo][i]; });
@@ -332,7 +332,7 @@ async function claimMatch(){ const st=swipeState(), P=pots(); if(!st.match||!P.s
 async function resetSwipes(all){ const st=swipeState(); for(const d of (all?st.docs:st.docs.filter(x=>x.by===st.me))) await del('swipes',d.id); }
 function renderSwipe(){
   const st=swipeState(), P=pots(); let body='';
-  if(st.cands.length<2) body=`<div class="empty">Zet eerst minstens twee gezamenlijke beloningen op de lijst, dan valt er iets te swipen.</div><div><button class="btn ghost" data-v="inst" data-closesheet="1">Naar de beloningen</button></div>`;
+  if(st.cands.length<2) body=`<div class="empty">Zet eerst minstens twee gezamenlijke beloningen op de lijst, dan valt er iets te swipen.</div><div><button class="btn ghost" data-v="punten" data-goto="rw-settings" data-closesheet="1">Naar de beloningen</button></div>`;
   else if(st.match) body=P.samenReady?`<div class="spin"><span class="eyebrow">Het is een match</span><span class="spin-t">${esc(st.match.titel)}</span><span class="muted">Jullie wilden dit allebei en de gezamenlijke pot is vol.</span><div><button class="btn" data-claim="1">Verzilver de match</button></div></div>`
     :`<div class="spin"><span class="eyebrow">Er is een match</span><span class="spin-t">? ? ?</span><span class="muted">Jullie willen allebei hetzelfde. Wat het is, zie je zodra de gezamenlijke pot vol is en jullie allebei genoeg hebben bijgedragen (${Math.max(0,P.samenBal)} van ${P.c.samen}).</span></div>`;
   else if(st.remaining.length){ const c=st.remaining[0];
@@ -340,7 +340,7 @@ function renderSwipe(){
     <div class="swipe-area"><div class="swipe-card" id="swipe-card" data-id="${c.id}"><span class="eyebrow">${st.cands.length-st.remaining.length+1} van ${st.cands.length}</span><span class="swipe-t">${esc(c.titel)}</span><span class="muted">${c.herhalend?'kan vaker':'eenmalig'}</span><span class="stamp yes">JA</span><span class="stamp no">NEE</span></div></div>
     <div class="row" style="justify-content:center;gap:28px"><button class="sw-btn no" data-vote="no" aria-label="Nee, overslaan">✕</button><button class="sw-btn yes" data-vote="yes" aria-label="Ja, dit wil ik">♥</button></div>`; }
   else if(!st.others.length) body=`<div class="empty">Je hebt alles geswiped. Zodra je partner meedoet en ook swipet, kan er een match komen.</div><div><button class="btn ghost small" data-reswipe="me">Mijn keuzes opnieuw doen</button></div>`;
-  else if(st.partnerDone) body=`<div class="empty">Geen match deze keer: jullie kozen niet hetzelfde. Begin een nieuwe ronde, of zet nieuwe ideeën op de lijst.</div><div class="row"><button class="btn" data-reswipe="all">Nieuwe ronde voor allebei</button><button class="btn ghost" data-v="inst" data-closesheet="1">Ideeën toevoegen</button></div>`;
+  else if(st.partnerDone) body=`<div class="empty">Geen match deze keer: jullie kozen niet hetzelfde. Begin een nieuwe ronde, of zet nieuwe ideeën op de lijst.</div><div class="row"><button class="btn" data-reswipe="all">Nieuwe ronde voor allebei</button><button class="btn ghost" data-v="punten" data-goto="rw-settings" data-closesheet="1">Ideeën toevoegen</button></div>`;
   else body=`<div class="empty">Je bent klaar met swipen. Nu is het wachten op ${esc(personName(st.others[0])||'je partner')}.</div><div><button class="btn ghost small" data-reswipe="me">Mijn keuzes opnieuw doen</button></div>`;
   $('#sheet-in').innerHTML=`<div class="sheet-head"><div><div class="eyebrow">Gezamenlijke beloning</div><h2 id="sheet-title">Swipen tot een match</h2></div><button class="x" id="sheet-x" aria-label="Sluiten">×</button></div>${body}`;
   bindSwipe();
@@ -401,7 +401,7 @@ function renderHome(){
   $('#glow-num').textContent=Math.round(all*100)+'%';
   const r=19,c=2*Math.PI*r,gr=$('#glow-ring'); gr.setAttribute('stroke',stateColor(all)); gr.setAttribute('stroke-dasharray',`${c*all} ${c}`);
   const rem=reminders();
-  $('#zones').innerHTML=SPOTS.map((s,i)=>{ const n=s.id==='kalender'?rem.length:S.tasks.filter(t=>spotOf(t)===s.id&&isActive(t)&&fresh(t)<.15).length; return `<button class="zchip" data-spot="${s.id}">${ring(hs[i])}<span class="t"><span class="n">${esc(s.name)}</span><span class="s">${n?`${n} vraagt aandacht`:esc(s.room)}</span></span></button>`; }).join('');
+  $('#zones').innerHTML=GROUPS.map(g=>{ const h=groupHealth(g), n=groupAttention(g); return `<button class="zchip" data-group="${g.id}">${ring(h,48)}<span class="t"><span class="n" style="font-size:1rem">${esc(g.name)}</span><span class="s">${n?`${n} te doen`:'op orde'}</span></span></button>`; }).join('');
   // attention
   const worst=S.tasks.filter(t=>!t.once&&isActive(t)).map(t=>({t,f:fresh(t)})).sort((a,b)=>a.f-b.f).slice(0,4);
   const onceDue=S.tasks.filter(t=>t.once&&!t.done&&t.due&&daysUntil(dateFrom(t.due))<=3).sort((a,b)=>a.due.localeCompare(b.due));
@@ -447,8 +447,16 @@ function renderWheel(){
 
 /* ---------- sheet ---------- */
 let openSpot=null, openSub=null;
-function openSheet(id,sub){ if(!SP[id]&&id!=='swipe') return; openSpot=id; openSub=sub||null; $('#scrim').hidden=false; $('#sheet').hidden=false; renderSheet(); $('#sheet').scrollTop=0; }
-function closeSheet(){ openSpot=null; openSub=null; $('#scrim').hidden=true; $('#sheet').hidden=true; }
+const GROUPS=[{id:'huis',name:'Huis',spots:['dak','cv','bed','kast','badkamer','woonkamer','hal','kalender','koelkast','keuken','kluis','afval']},{id:'tuin',name:'Tuin',spots:['tuin']},{id:'auto',name:'Auto',spots:['auto']}];
+const GR=Object.fromEntries(GROUPS.map(g=>[g.id,g]));
+function spotAttention(id){ return id==='kalender'?reminders().length:S.tasks.filter(t=>spotOf(t)===id&&isActive(t)&&fresh(t)<.15).length; }
+function groupHealth(g){ return g.spots.reduce((a,id)=>a+spotHealth(id),0)/g.spots.length; }
+function groupAttention(g){ return g.spots.reduce((a,id)=>a+spotAttention(id),0); }
+let openFrom=null;
+function openGroup(gid){ const g=GR[gid]; if(!g) return; if(g.spots.length===1){ openFrom=null; return openSheet(g.spots[0]); } openFrom=null; openSheet('groep:'+gid); }
+function groupHtml(g){ return `<div class="tiles">${g.spots.map(id=>{ const s=SP[id], n=spotAttention(id); return `<button class="tile" data-gospot="${id}">${ring(spotHealth(id),40)}<span class="tn">${esc(s.name)}</span><span class="ts">${n?`${n} vraagt aandacht`:esc(s.room)}</span></button>`; }).join('')}</div>`; }
+function openSheet(id,sub){ if(!SP[id]&&id!=='swipe'&&!/^groep:/.test(id)) return; openSpot=id; openSub=sub||null; $('#scrim').hidden=false; $('#sheet').hidden=false; renderSheet(); $('#sheet').scrollTop=0; }
+function closeSheet(){ openFrom=null; openSpot=null; openSub=null; $('#scrim').hidden=true; $('#sheet').hidden=true; }
 function taskMeta(t){ const d=daysAgo(t); const who=personName(t.lastBy); const when=d===null?'nog nooit':d===0?'vandaag':d===1?'gisteren':`${d} dagen geleden`; let rit; if(t.trigger) rit=triggerOn(t.trigger)?`nu nodig (${TRIG[t.trigger]})`:`slaapt · ${TRIG[t.trigger]||''}`; else if(t.perSeizoen){ const e=interval(t), sz=season(new Date()); rit=e>0?`nu elke ${e} dagen (${sz})`:`rust in de ${sz}`; } else rit=`elke ${t.everyDays} dagen`;
   return `${rit} · ${when}${who?` door ${esc(who)}`:''}`; }
 function ritmeFields(t){ const r=t&&t.trigger?'weer':t&&t.perSeizoen?'seizoen':'jaar'; const ps=(t&&t.perSeizoen)||{}; const base=(t&&t.everyDays)||30;
@@ -508,7 +516,9 @@ function kalenderHtml(){
       <div><button class="btn" type="submit">Toevoegen</button></div></form>`;
 }
 function renderSheet(){
-  if(!openSpot) return; if(openSpot==='swipe') return renderSwipe(); const s=SP[openSpot];
+  if(!openSpot) return; if(openSpot==='swipe') return renderSwipe();
+  if(/^groep:/.test(openSpot)){ const g=GR[openSpot.slice(6)]; if(!g){ closeSheet(); return; } $('#sheet-in').innerHTML=`<div class="sheet-head"><div class="row" style="gap:12px">${ring(groupHealth(g),52)}<div><div class="eyebrow">Overzicht</div><h2 id="sheet-title">${esc(g.name)}</h2></div></div><button class="x" id="sheet-x" aria-label="Sluiten">×</button></div>${groupHtml(g)}`; return; }
+  const s=SP[openSpot];
   const ts=S.tasks.filter(t=>spotOf(t)===openSpot);
   let body='', title=s.name, eyebrow=s.room, h=spotHealth(openSpot);
   if(openSpot==='kalender'){ body=kalenderHtml(); }
@@ -526,6 +536,7 @@ function renderSheet(){
       h=healthOf(rec.concat(once)); body=back+(rec.length?`<h3>Terugkerend</h3>${recurringRows(rec)}`:'')+(once.length?`<h3>Eenmalig</h3>${onceRows(once)}`:'')+(!rec.length&&!once.length?'<div class="empty">Nog niets in deze soort.</div>':'')+newForm(openSub,'rep'); }
   }
   $('#sheet-in').innerHTML=`<div class="sheet-head"><div class="row" style="gap:12px">${h===null?'':ring(h,52)}<div><div class="eyebrow">${esc(eyebrow)}</div><h2 id="sheet-title">${esc(title)}</h2></div></div><button class="x" id="sheet-x" aria-label="Sluiten">×</button></div>
+    ${openFrom&&!openSub?`<button class="back" data-backgroup="${openFrom}">‹ Terug naar ${esc(GR[openFrom].name)}</button>`:''}
     ${ASKS[openSpot]&&!openSub?`<button class="askbtn" data-askfill="${esc(ASKS[openSpot])}">Vraag de vraagbaak hierover</button>`:''}${body}`;
 }
 function defaultCat(spot){ return {afval:'opruimen',kluis:'geld',hal:'planning',koelkast:'voorraad',kast:'opruimen',tuin:'onderhoud',auto:'onderhoud',dak:'onderhoud',cv:'onderhoud'}[spot]||'schoonmaak'; }
@@ -556,8 +567,11 @@ async function setWeer(w){ return put('household','main',w==='auto'?{weer:null,w
 function safe(p){ Promise.resolve(p).catch(e=>{ $('#banner').hidden=false; $('#banner').textContent=(e&&e.code==='offline')?'Geen internet: je wijziging is niet opgeslagen. Probeer het zo nog eens.':'Opslaan lukte niet: '+(e&&e.message||'onbekende fout')+'. Probeer het zo nog eens.'; Store.resetSince(); poll(); }); }
 
 /* ---------- events ---------- */
-function showTab(v){ document.querySelectorAll('.tab').forEach(t=>t.setAttribute('aria-selected',t.dataset.v===v)); ['huis','lijst','inst'].forEach(x=>$('#v-'+x).hidden=x!==v); window.scrollTo(0,0); if(v==='inst') fillSettings(); renderLijst(); }
+function showTab(v){ document.querySelectorAll('.tab').forEach(t=>t.setAttribute('aria-selected',t.dataset.v===v)); ['huis','lijst','punten','inst'].forEach(x=>$('#v-'+x).hidden=x!==v); if(v==='punten') renderRewardSettings(); window.scrollTo(0,0); if(v==='inst') fillSettings(); renderLijst(); }
 document.addEventListener('click',e=>{
+  const gEl=e.target.closest('[data-group]'); if(gEl&&!e.target.closest('#sheet')){ openGroup(gEl.dataset.group); return; }
+  const goEl=e.target.closest('[data-gospot]'); if(goEl){ openFrom=openSpot.slice(6); openSpot=goEl.dataset.gospot; openSub=null; renderSheet(); $('#sheet').scrollTop=0; return; }
+  const bgEl=e.target.closest('[data-backgroup]'); if(bgEl){ const g=bgEl.dataset.backgroup; openFrom=null; openSpot='groep:'+g; openSub=null; renderSheet(); return; }
   const sEl=e.target.closest('[data-spot]'); if(sEl&&!e.target.closest('#sheet')&&!e.target.closest('button[data-regel]')){ openSheet(sEl.dataset.spot,sEl.dataset.opensub); return; }
   const b=e.target.closest('button,input[type=checkbox]'); if(!b) return;
   if(b.id==='sheet-x') return closeSheet();
@@ -583,6 +597,7 @@ document.addEventListener('click',e=>{
   if(b.id==='shop-clear'){ S.shopping.filter(i=>i.done).forEach(i=>safe(del('shopping',i.id))); }
   if(b.dataset.closesheet) closeSheet();
   if(b.dataset.v){ showTab(b.dataset.v); }
+  if(b.dataset.goto){ if(!b.dataset.v) showTab('punten'); const el=document.getElementById(b.dataset.goto); if(el) setTimeout(()=>el.scrollIntoView({behavior:'smooth',block:'start'}),60); }
   if(b.dataset.openswipe){ openSheet('swipe'); return; }
   if(b.dataset.vote){ flyOut(b.dataset.vote==='yes'); return; }
   if(b.dataset.claim){ b.disabled=true; safe(claimMatch()); return; }
@@ -659,7 +674,7 @@ function needWho(){ const bw=bewoners(); if(bw.length<2) return false; if(bw.som
 
 /* ---------- opstarten ---------- */
 let setupPlaats=null, pollTimer=null, lastFull=0;
-function rerender(){ if(!S.loaded) return; renderWho(); renderHome(); renderSheet(); renderLijst(); if(!$('#v-inst').hidden) fillSettings(); }
+function rerender(){ if(!S.loaded) return; renderWho(); renderHome(); renderSheet(); renderLijst(); if(!$('#v-inst').hidden) fillSettings(); if(!$('#v-punten').hidden) renderRewardSettings(); }
 async function poll(){
   if(!S.loaded&&!S.connecting) return;
   try{
