@@ -211,6 +211,18 @@ details.prep summary{cursor:pointer;font-size:.82rem;color:var(--accent);font-we
 .prep-list li > span{flex:1;min-width:0}
 .prep-list .done{text-decoration:line-through;color:var(--muted)}
 .att-list li .who-badge{margin-left:2px}
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.cal-dow{text-align:center;font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;padding-bottom:2px}
+.cal-day{display:grid;justify-items:center;align-content:start;gap:3px;min-height:48px;padding:6px 2px;border-radius:10px;border:1px solid transparent;background:var(--surface-2);font-variant-numeric:tabular-nums}
+.cal-day:hover{border-color:var(--line)}
+.cal-day.other{opacity:.4}
+.cal-day.today .cal-n{background:var(--accent);color:var(--accent-ink);border-radius:99px;padding:0 6px}
+.cal-day.sel{border-color:var(--accent);background:var(--surface)}
+.cal-n{font-weight:600;font-size:.88rem;line-height:1.5}
+.cal-dots{display:flex;gap:2px;flex-wrap:wrap;justify-content:center}
+.cal-dots i{width:6px;height:6px;border-radius:50%;display:block}
+#v-kalender .top{align-items:center}
+#cal-title{text-transform:capitalize}
 .badge-pts{font-size:.72rem;font-weight:700;color:var(--accent);border:1px solid var(--accent);border-radius:6px;padding:1px 5px;white-space:nowrap}
 
 /* Chat */
@@ -234,8 +246,8 @@ label.f{display:grid;gap:4px;font-size:.82rem;color:var(--muted);font-weight:600
 /* Tabs */
 .tabs{position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--surface);border-top:1px solid var(--line);
   padding:6px max(16px,env(safe-area-inset-right,0px)) calc(6px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
-.tabs-in{max-width:520px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
-.tab{background:none;border:0;border-radius:10px;padding:6px 4px;display:grid;justify-items:center;gap:2px;font-size:.78rem;color:var(--muted);font-weight:600}
+.tabs-in{max-width:520px;margin:0 auto;display:grid;grid-template-columns:repeat(5,1fr);gap:4px}
+.tab{background:none;border:0;border-radius:10px;padding:6px 2px;min-width:0;white-space:nowrap;display:grid;justify-items:center;gap:2px;font-size:.78rem;color:var(--muted);font-weight:600}
 .tab svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .tab[aria-selected="true"]{color:var(--accent);background:var(--surface-2)}
 .stack{display:grid;gap:12px}
@@ -509,6 +521,15 @@ label.f{display:grid;gap:4px;font-size:.82rem;color:var(--muted);font-weight:600
 
     <div class="zones" id="zones"></div>
     <div class="card" id="attention"></div>
+  </section>
+
+  <!-- KALENDER -->
+  <section id="v-kalender" class="stack" hidden>
+    <div class="top"><div><div class="eyebrow">Kalender</div><h1 id="cal-title">Kalender</h1></div>
+      <div class="row" style="gap:6px"><button class="btn ghost small" data-calnav="-" aria-label="Vorige maand">‹</button><button class="btn ghost small" data-calnav="nu">Vandaag</button><button class="btn ghost small" data-calnav="+" aria-label="Volgende maand">›</button></div></div>
+    <div class="card stack" style="gap:10px"><div class="cal" id="cal-grid"></div><div class="legend" id="cal-legend"></div></div>
+    <div class="card stack" id="cal-day"></div>
+    <div class="card stack" id="kal-body"></div>
     <div class="card stack" id="wheelcard"></div>
   </section>
 
@@ -599,6 +620,7 @@ label.f{display:grid;gap:4px;font-size:.82rem;color:var(--muted);font-weight:600
 <nav class="tabs" aria-label="Weergaven"><div class="tabs-in" role="tablist">
   <button class="tab" role="tab" data-v="huis" aria-selected="true"><svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg>Huis</button>
   <button class="tab" role="tab" data-v="lijst" aria-selected="false"><svg viewBox="0 0 24 24"><path d="M5 7h14l-1.5 11a2 2 0 0 1-2 1.7h-7a2 2 0 0 1-2-1.7z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg>Lijst</button>
+  <button class="tab" role="tab" data-v="kalender" aria-selected="false"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>Kalender</button>
   <button class="tab" role="tab" data-v="punten" aria-selected="false"><svg viewBox="0 0 24 24"><path d="M12 3l2.6 5.6 6 .7-4.5 4.1 1.2 6L12 16.4 6.7 19.4l1.2-6L3.4 9.3l6-.7z"/></svg>Punten</button>
   <button class="tab" role="tab" data-v="inst" aria-selected="false"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4.5-6 8-6s7 2 8 6"/></svg>Over ons</button>
 </div></nav>
