@@ -271,17 +271,21 @@ function pots(){
   const samenBal=totalAll-S.gewonnen.filter(g=>g.soort==='samen').reduce((a,g)=>a+(Number(g.kosten)||0),0);
   const last=S.gewonnen.filter(g=>g.soort==='samen').map(g=>g.at).sort().pop()||'';
   const share={}; ids.forEach(id=>{ share[id]=S.log.filter(l=>l.by===id&&(l.at||'')>last).reduce((a,l)=>a+lp(l),0); });
-  const need=Math.ceil(c.samen*c.aandeel/100);
+  const st=swipeState(); const sp=poolFor('samen',S.meId);
+  const samenTarget=st.match?costOf(st.match):(sp.length?Math.min(...sp.map(costOf)):c.samen);
+  const need=Math.ceil(samenTarget*c.aandeel/100);
   const short=ids.filter(id=>share[id]<need);
-  const samenReady=samenBal>=c.samen&&ids.length>=2&&short.length===0;
-  return {c,ids,solo,samenBal,share,need,short,samenReady};
+  const samenReady=samenBal>=samenTarget&&ids.length>=2&&short.length===0;
+  const soloMin={}; ids.forEach(id=>{ const pl=poolFor('solo',id); soloMin[id]=pl.length?Math.min(...pl.map(costOf)):c.solo; });
+  return {c,ids,solo,samenBal,share,need,short,samenReady,samenTarget,soloMin};
 }
+function costOf(b){ const n=Number(b&&b.punten); if(n>0) return Math.round(n); const c=cfg(); return b&&b.soort==='samen'?c.samen:c.solo; }
 function poolFor(soort,id){ return S.beloningen.filter(b=>b.actief!==false&&(soort==='samen'?b.soort==='samen':(b.soort==='solo'&&(b.voor==='iedereen'||b.voor===id)))); }
 let spinning=false, spinView=null;
 async function spin(soort){
   if(spinning) return; const P=pots(); const me=S.meId;
-  if(soort==='samen'&&!P.samenReady) return; if(soort==='solo'&&P.solo[me]<P.c.solo) return;
-  const pool=poolFor(soort,me); if(!pool.length) return;
+  if(soort==='samen'&&!P.samenReady) return;
+  const pool=poolFor(soort,me).filter(b=>soort==='samen'||costOf(b)<=P.solo[me]); if(!pool.length) return;
   spinning=true; const pick=pool[Math.floor(Math.random()*pool.length)];
   const reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
   spinView={soort,text:pool[0].titel,done:false}; renderRewards();
@@ -289,27 +293,30 @@ async function spin(soort){
   await new Promise(res=>{ const tick=()=>{ i++; if(i>=steps){ res(); return; } spinView.text=pool[i%pool.length].titel; const el=document.getElementById('spin-t'); if(el) el.textContent=spinView.text; setTimeout(tick,60+i*12); }; tick(); });
   spinView={soort,text:pick.titel,done:true};
   try{
-    await put('gewonnen',uid(),{soort,wie:soort==='solo'?me:null,titel:pick.titel,beloningId:pick.id,kosten:soort==='samen'?P.c.samen:P.c.solo,at:new Date().toISOString(),door:me,verzilverd:false});
+    await put('gewonnen',uid(),{soort,wie:soort==='solo'?me:null,titel:pick.titel,beloningId:pick.id,kosten:costOf(pick),at:new Date().toISOString(),door:me,verzilverd:false});
     if(!pick.herhalend) await put('beloningen',pick.id,{actief:false},true);
   }catch(e){ safe(Promise.reject(e)); spinView=null; }
   spinning=false; renderRewards();
 }
 function renderRewards(){
   const P=pots(), c=P.c, me=S.meId;
-  const sharePct=id=>Math.min(100,P.share[id]/c.samen*100);
+  const sharePct=id=>Math.min(100,P.share[id]/Math.max(1,P.samenTarget)*100);
   const samenPool=poolFor('samen',me).length, soloPool=poolFor('solo',me).length;
   const shortTxt=P.ids.length<2?'Zodra jullie allebei punten verdienen, telt de gezamenlijke pot.':P.short.length?P.short.map(id=>`${esc(personName(id))} nog ${P.need-P.share[id]}`).join(' · ')+` punten voor een eerlijk aandeel`:'Allebei genoeg bijgedragen';
   const st=swipeState();
   const samenBtn=samenPool<2?`<button class="btn ghost small" data-v="punten">Zet gezamenlijke ideeën op de lijst om te swipen</button>`
     :`<button class="btn${st.match&&P.samenReady?'':' ghost'}" data-openswipe="1">${st.match?(P.samenReady?'Match! Bekijk en verzilver':'Er is een match, pot nog niet vol'):(st.remaining.length?`Swipe gezamenlijke wensen (${st.remaining.length} te gaan)`:'Swipen: wachten op je partner')}</button>`;
-  const soloRows=P.ids.map(id=>{ const bal=Math.max(0,P.solo[id]); const ready=bal>=c.solo; return `<div class="pot"><div class="pot-head"><b><i class="dot" style="background:${personColor(id)}"></i>${esc(id===me?'Jouw pot':'Pot van '+personName(id))}</b><span class="pts">${bal} / ${c.solo}</span></div>
-    <div class="bar"><span style="width:${Math.min(100,bal/c.solo*100)}%;background:${personColor(id)}"></span></div>
-    ${id===me&&ready?(soloPool?`<div><button class="btn" data-spin="solo">Draai jouw rad</button></div>`:`<div><button class="btn ghost small" data-v="punten" data-goto="rw-settings">Voeg eerst een beloning voor jezelf toe</button></div>`):''}</div>`; }).join('');
+  const soloRows=P.ids.map(id=>{ const bal=Math.max(0,P.solo[id]); const pl=poolFor('solo',id); const tgt=P.soloMin[id]; const inReach=pl.filter(b=>costOf(b)<=bal).length; const ready=inReach>0;
+    const nextUp=pl.map(costOf).filter(x=>x>bal).sort((a,b)=>a-b)[0];
+    return `<div class="pot"><div class="pot-head"><b><i class="dot" style="background:${personColor(id)}"></i>${esc(id===me?'Jouw pot':'Pot van '+personName(id))}</b><span class="pts">${bal} / ${tgt}</span></div>
+    <div class="bar"><span style="width:${Math.min(100,bal/Math.max(1,tgt)*100)}%;background:${personColor(id)}"></span></div>
+    <div class="legend"><span>${pl.length?(ready?`${inReach} van ${pl.length} ${pl.length===1?'beloning':'beloningen'} binnen bereik${nextUp?` · volgende bij ${nextUp}`:''}`:`Goedkoopste beloning bij ${tgt} punten`):'Nog geen eigen beloningen'}</span></div>
+    ${id===me&&ready?`<div><button class="btn" data-spin="solo">Draai jouw rad</button></div>`:id===me&&!pl.length?`<div><button class="btn ghost small" data-v="punten" data-goto="rw-settings">Voeg eerst een beloning voor jezelf toe</button></div>`:''}</div>`; }).join('');
   const open=S.gewonnen.filter(g=>!g.verzilverd&&(g.soort==='samen'||g.wie===me)).sort((a,b)=>(b.at||'').localeCompare(a.at||''));
   const ws=weekStart(), wk=S.log.filter(l=>new Date(l.at)>=ws), wkPts=wk.reduce((a,l)=>a+lp(l),0);
   $('#samen').innerHTML=`<div class="samen-head"><h2>Punten en beloningen</h2><span class="pts">deze week ${wk.length} taken · ${wkPts} punten</span></div>
     ${spinView?`<div class="spin" aria-live="polite"><span class="eyebrow">${spinView.soort==='samen'?'Samen gewonnen':'Jij hebt gewonnen'}</span><span class="spin-t" id="spin-t">${esc(spinView.text)}</span>${spinView.done?`<div><button class="btn ghost small" data-spinclose="1">Mooi!</button></div>`:''}</div>`:''}
-    <div class="pot"><div class="pot-head"><b>Gezamenlijke pot</b><span class="pts">${Math.max(0,P.samenBal)} / ${c.samen}</span></div>
+    <div class="pot"><div class="pot-head"><b>Gezamenlijke pot</b><span class="pts">${Math.max(0,P.samenBal)} / ${P.samenTarget}</span></div>
       <div class="bar">${P.ids.map(id=>`<span style="width:${sharePct(id)}%;background:${personColor(id)}"></span>`).join('')}${P.ids.length>1?`<i class="mark" style="left:${Math.min(100,c.aandeel)}%" title="minimaal aandeel"></i>`:''}</div>
       <div class="legend">${P.ids.map(id=>`<span><i class="dot" style="background:${personColor(id)}"></i>${esc(personName(id))} ${P.share[id]}</span>`).join('')}<span>${shortTxt}</span></div>
       ${samenBtn?`<div>${samenBtn}</div>`:''}</div>
@@ -325,11 +332,11 @@ function renderRewardSettings(){
   if(cur) sel.value=cur;
   const lbl=b=>b.soort==='samen'?'samen':b.voor==='iedereen'?'ieder apart':b.voor===S.meId?'voor mij':'voor '+personName(b.voor);
   const list=S.beloningen.slice().sort((a,b)=>(a.soort||'').localeCompare(b.soort||'')||(a.titel||'').localeCompare(b.titel||''));
-  $('#rw-list').innerHTML=list.length?`<ul class="list">${list.map(b=>`<li><span>${esc(b.titel)} <span class="muted">· ${esc(lbl(b))} · ${b.herhalend?'terugkerend':(b.actief===false?'al gewonnen':'eenmalig')}</span></span>${b.actief===false?`<button class="btn ghost small" data-rwrevive="${b.id}">Weer aanzetten</button>`:''}<button class="btn ghost small" data-rwdel="${b.id}">Weg</button></li>`).join('')}</ul>`:'<div class="empty">Nog geen beloningen. Voeg er een paar toe; bij het draaien kiest het rad er willekeurig een uit.</div>';
+  $('#rw-list').innerHTML=list.length?`<ul class="list">${list.map(b=>`<li><span>${esc(b.titel)} <span class="muted">· ${esc(lbl(b))} · ${b.herhalend?'terugkerend':(b.actief===false?'al gewonnen':'eenmalig')}</span></span><label class="row muted rw-pts" style="gap:4px;font-size:.8rem"><input type="number" class="n-input" min="1" max="5000" data-rwpts="${b.id}" value="${Number(b.punten)>0?Number(b.punten):''}" placeholder="${costOf({soort:b.soort})}" aria-label="Punten voor ${esc(b.titel)}">pt</label>${b.actief===false?`<button class="btn ghost small" data-rwrevive="${b.id}">Weer aanzetten</button>`:''}<button class="btn ghost small" data-rwdel="${b.id}">Weg</button></li>`).join('')}</ul>`:'<div class="empty">Nog geen beloningen. Voeg er een paar toe; bij het draaien kiest het rad er willekeurig een uit.</div>';
   const SUG=['Ontbijt op bed','Samen uit eten','Uitslapen in het weekend','Filmavond met snacks','Een avond vrij van taken','Massage','Dagje weg','Bloemen'];
   $('#rw-sugg').innerHTML=SUG.filter(t=>!S.beloningen.some(b=>b.titel===t)).map(t=>`<button data-rwsug="${esc(t)}">+ ${esc(t)}</button>`).join('');
 }
-async function addReward(titel,voor,herhalend){ return put('beloningen',uid(),{titel:String(titel).slice(0,120),soort:voor==='samen'?'samen':'solo',voor:voor==='samen'?null:voor,herhalend:!!herhalend,actief:true,by:S.meId,at:new Date().toISOString()}); }
+async function addReward(titel,voor,herhalend,punten){ const n=Math.round(Number(punten)); return put('beloningen',uid(),{titel:String(titel).slice(0,120),punten:n>0?Math.min(5000,n):null,soort:voor==='samen'?'samen':'solo',voor:voor==='samen'?null:voor,herhalend:!!herhalend,actief:true,by:S.meId,at:new Date().toISOString()}); }
 
 /* ---------- swipe ---------- */
 function samenRound(){ return S.gewonnen.filter(g=>g.soort==='samen').length; }
@@ -351,17 +358,17 @@ async function vote(id,yes){ const st=swipeState(); const docId=`r${st.round}_${
   const data={round:st.round,by:st.me,likes:[...likes],nos:[...nos],at:new Date().toISOString()};
   return put('swipes',docId,data); }
 async function claimMatch(){ const st=swipeState(), P=pots(); if(!st.match||!P.samenReady) return;
-  await put('gewonnen','samen-r'+st.round,{soort:'samen',wie:null,titel:st.match.titel,beloningId:st.match.id,kosten:P.c.samen,at:new Date().toISOString(),door:S.meId,verzilverd:false,via:'match'});
+  await put('gewonnen','samen-r'+st.round,{soort:'samen',wie:null,titel:st.match.titel,beloningId:st.match.id,kosten:costOf(st.match),at:new Date().toISOString(),door:S.meId,verzilverd:false,via:'match'});
   if(!st.match.herhalend) await put('beloningen',st.match.id,{actief:false},true); }
 async function resetSwipes(all){ const st=swipeState(); for(const d of (all?st.docs:st.docs.filter(x=>x.by===st.me))) await del('swipes',d.id); }
 function renderSwipe(){
   const st=swipeState(), P=pots(); let body='';
   if(st.cands.length<2) body=`<div class="empty">Zet eerst minstens twee gezamenlijke beloningen op de lijst, dan valt er iets te swipen.</div><div><button class="btn ghost" data-v="punten" data-goto="rw-settings" data-closesheet="1">Naar de beloningen</button></div>`;
   else if(st.match) body=P.samenReady?`<div class="spin"><span class="eyebrow">Het is een match</span><span class="spin-t">${esc(st.match.titel)}</span><span class="muted">Jullie wilden dit allebei en de gezamenlijke pot is vol.</span><div><button class="btn" data-claim="1">Verzilver de match</button></div></div>`
-    :`<div class="spin"><span class="eyebrow">Er is een match</span><span class="spin-t">? ? ?</span><span class="muted">Jullie willen allebei hetzelfde. Wat het is, zie je zodra de gezamenlijke pot vol is en jullie allebei genoeg hebben bijgedragen (${Math.max(0,P.samenBal)} van ${P.c.samen}).</span></div>`;
+    :`<div class="spin"><span class="eyebrow">Er is een match</span><span class="spin-t">? ? ?</span><span class="muted">Jullie willen allebei hetzelfde. Wat het is, zie je zodra de gezamenlijke pot vol is en jullie allebei genoeg hebben bijgedragen (${Math.max(0,P.samenBal)} van ${P.samenTarget} punten).</span></div>`;
   else if(st.remaining.length){ const c=st.remaining[0];
     body=`<p class="muted" style="margin:0">Naar rechts als je het wilt, naar links als je het overslaat. Je partner ziet nooit wat jij kiest, alleen de match.</p>
-    <div class="swipe-area"><div class="swipe-card" id="swipe-card" data-id="${c.id}"><span class="eyebrow">${st.cands.length-st.remaining.length+1} van ${st.cands.length}</span><span class="swipe-t">${esc(c.titel)}</span><span class="muted">${c.herhalend?'kan vaker':'eenmalig'}</span><span class="stamp yes">JA</span><span class="stamp no">NEE</span></div></div>
+    <div class="swipe-area"><div class="swipe-card" id="swipe-card" data-id="${c.id}"><span class="eyebrow">${st.cands.length-st.remaining.length+1} van ${st.cands.length}</span><span class="swipe-t">${esc(c.titel)}</span><span class="muted">${costOf(c)} punten · ${c.herhalend?'kan vaker':'eenmalig'}</span><span class="stamp yes">JA</span><span class="stamp no">NEE</span></div></div>
     <div class="row" style="justify-content:center;gap:28px"><button class="sw-btn no" data-vote="no" aria-label="Nee, overslaan">✕</button><button class="sw-btn yes" data-vote="yes" aria-label="Ja, dit wil ik">♥</button></div>`; }
   else if(!st.others.length) body=`<div class="empty">Je hebt alles geswiped. Zodra je partner meedoet en ook swipet, kan er een match komen.</div><div><button class="btn ghost small" data-reswipe="me">Mijn keuzes opnieuw doen</button></div>`;
   else if(st.partnerDone) body=`<div class="empty">Geen match deze keer: jullie kozen niet hetzelfde. Begin een nieuwe ronde, of zet nieuwe ideeën op de lijst.</div><div class="row"><button class="btn" data-reswipe="all">Nieuwe ronde voor allebei</button><button class="btn ghost" data-v="punten" data-goto="rw-settings" data-closesheet="1">Ideeën toevoegen</button></div>`;
@@ -764,6 +771,7 @@ document.addEventListener('change',e=>{ const el=e.target;
   if(el.name==='ritme'){ const f=el.closest('form'); f.querySelectorAll('[data-r]').forEach(x=>x.hidden=x.dataset.r!==el.value); }
   if(el.id==='foto-in') handlePhoto(el);
   if(el.id==='ap-scan') scanPlate(el);
+  if(el.dataset&&el.dataset.rwpts){ const n=Math.round(Number(el.value)); safe(put('beloningen',el.dataset.rwpts,{punten:n>0?Math.min(5000,n):null},true)); }
   if(el.id==='who-sel'){ kiesIk(el.value); } });
 document.addEventListener('submit',e=>{
   const f=e.target; e.preventDefault();
@@ -784,7 +792,7 @@ document.addEventListener('submit',e=>{
   else if(f.id==='f-af'){ safe(addAfspraak($('#af-titel').value.trim(),$('#af-datum').value,$('#af-prep').value.trim())); }
   else if(f.id==='f-dag'){ const t=$('#dg-titel').value.trim(), d=$('#dg-datum').value; if(t&&d) safe(addDag(t,$('#dg-type').value,d,$('#dg-cadeau').checked,$('#dg-rem').value,$('#dg-geenjaar').checked)); }
   else if(f.id==='f-me'){ saveMe(); }
-  else if(f.id==='f-rw'){ const t=$('#rw-titel').value.trim(); if(t){ safe(addReward(t,$('#rw-voor').value,$('#rw-herhaal').checked)); $('#rw-titel').value=''; } }
+  else if(f.id==='f-rw'){ const t=$('#rw-titel').value.trim(); if(t){ safe(addReward(t,$('#rw-voor').value,$('#rw-herhaal').checked,$('#rw-punten').value)); $('#rw-punten').value=''; $('#rw-titel').value=''; } }
   else if(f.id==='f-rwcfg'){ safe(put('household','main',{drempelSamen:Math.max(10,Number($('#c-samen').value)||200),minAandeel:Math.max(0,Math.min(50,Number($('#c-aandeel').value)||0)),drempelSolo:Math.max(10,Number($('#c-solo').value)||100)},true).then(()=>flash('#cfg-saved'))); }
   else if(f.id==='f-hh'){ saveHH(); }
   else if(f.dataset.fmeta){ safe(put('fotos',f.dataset.fmeta,{merk:f.elements.merk.value.trim().slice(0,60),type:f.elements.type.value.trim().slice(0,80),notitie:f.elements.notitie.value.trim().slice(0,300)},true)); }

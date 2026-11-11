@@ -576,9 +576,9 @@ label.f{display:grid;gap:4px;font-size:.82rem;color:var(--muted);font-weight:600
       <h2>Beloningen</h2>
       <form class="stack" id="f-rwcfg">
         <div class="form-grid">
-          <label class="f">Punten voor een gezamenlijke beloning<input type="number" id="c-samen" min="10" max="5000"></label>
+          <label class="f">Standaard voor een gezamenlijke beloning<input type="number" id="c-samen" min="10" max="5000"></label>
           <label class="f">Ieder draagt minstens bij (%)<input type="number" id="c-aandeel" min="0" max="50"></label>
-          <label class="f">Punten voor een eigen beloning<input type="number" id="c-solo" min="10" max="5000"></label>
+          <label class="f">Standaard voor een eigen beloning<input type="number" id="c-solo" min="10" max="5000"></label>
         </div>
         <div class="row"><button class="btn ghost small" type="submit">Spelregels opslaan</button><span class="saved" id="cfg-saved" hidden>Opgeslagen</span></div>
       </form>
@@ -588,6 +588,7 @@ label.f{display:grid;gap:4px;font-size:.82rem;color:var(--muted);font-weight:600
         <input type="text" id="rw-titel" placeholder="Bijv. ontbijt op bed" required aria-label="Beloning">
         <div class="row"><select id="rw-voor" style="flex:1 1 200px" aria-label="Voor wie"></select>
           <label class="row muted" style="gap:6px;font-size:.85rem"><input type="checkbox" id="rw-herhaal" checked> mag vaker gewonnen worden</label></div>
+        <label class="row muted" style="gap:6px;font-size:.85rem">Kost<input type="number" id="rw-punten" class="n-input" min="1" max="5000" placeholder="standaard" aria-label="Punten">punten <span style="font-size:.78rem">(leeg: standaard)</span></label>
         <div><button class="btn" type="submit">Toevoegen</button></div>
       </form>
       <div class="suggest" id="rw-sugg"></div>
