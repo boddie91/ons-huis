@@ -391,7 +391,7 @@ function hoeHtml(t){ const a=apOf(t); const wat=[a&&a.merk,a&&a.type].filter(Boo
   const q=encodeURIComponent([wat||(a&&a.naam)||'',t.name].join(' ').trim());
   const steps=String(t.stappen||'').split(/\n+/).map(s=>s.replace(/^\s*(\d+[.)]|[-*•])\s*/,'').trim()).filter(Boolean);
   const auto=[`<a href="https://www.youtube.com/results?search_query=${q}" target="_blank" rel="noopener">Filmpje zoeken op YouTube</a>`];
-  if(wat) auto.push(`<a href="https://www.google.com/search?q=${encodeURIComponent(wat+' handleiding pdf')}" target="_blank" rel="noopener">Handleiding van de ${esc(wat)} zoeken</a>`);
+  if(wat) auto.push(`<a href="https://www.google.com/search?q=${encodeURIComponent(wat+' handleiding pdf')}" target="_blank" rel="noopener">Handleiding van de ${esc(wat)} zoeken</a>`,`<a href="https://www.google.com/search?q=${encodeURIComponent(wat+' onderdelen')}" target="_blank" rel="noopener">Onderdelen voor de ${esc(wat)} zoeken</a>`);
   if(t.materiaal) auto.push(`<a href="https://www.bol.com/nl/nl/s/?searchtext=${encodeURIComponent([wat,t.materiaal].filter(Boolean).join(' '))}" target="_blank" rel="noopener">${esc(t.materiaal)} op bol.com</a>`);
   return `<details class="hoe"><summary>Hoe doe ik dit?</summary><div class="stack" style="gap:8px;margin-top:6px">
     ${a?`<div class="muted" style="font-size:.85rem">Apparaat: <b style="color:var(--ink)">${esc(apLabel(a))}</b>${a.bouwjaar?` (${esc(a.bouwjaar)})`:''}</div>`:''}
@@ -422,13 +422,57 @@ function apparatenHtml(){ const list=S.apparaten.filter(a=>a.spot===openSpot).so
   ${fotos.length?`<div class="suggest">${fotos.map(f=>`<button data-apfromfoto="${f.id}">+ ${esc([f.merk,f.type].filter(Boolean).join(' '))} (uit foto)</button>`).join('')}</div>`:''}
   <div class="card stack"><h3>Apparaat toevoegen</h3>${apForm(null,null)}</div></div>`; }
 
+/* ---------- typeplaatje scannen (tekstherkenning op het toestel zelf) ---------- */
+const MERKEN=['Fisher & Paykel','Stiebel Eltron','Itho Daalderop','De\'Longhi','DeLonghi','KitchenAid','Bosch','Siemens','Neff','Gaggenau','Miele','AEG','Electrolux','Zanussi','Samsung','LG','Whirlpool','Bauknecht','Indesit','Hotpoint','Beko','Grundig','Liebherr','ATAG','Etna','Pelgrim','Inventum','Philips','Remeha','Nefit','Vaillant','Intergas','Daikin','Mitsubishi','Panasonic','Sharp','Smeg','Haier','Hisense','Candy','Hoover','Gorenje','Bomann','Tefal','Dyson','Ecovacs','Roborock','iRobot','Husqvarna','Robomow','Gardena','Worx','Kärcher','Karcher','Sony','Toshiba','Itho','Daalderop','Zehnder','Brink','Ariston','Quooker','Franke','Novy','Boretti','Balay','Rowenta','Krups','Jura','Kenwood','Nespresso','Senseo','Moulinex','Asko','V-Zug','Blomberg','Fagor','Elica','Viessmann','Buderus','Honeywell','Velux','Somfy'];
+const SOORTEN=[[/vaatwas|dishwasher|geschirrsp|lave-vaisselle/i,'Vaatwasser','keuken'],[/wasmachine|washing machine|waschmaschine|lave-linge|washer(?!.*dry)/i,'Wasmachine','badkamer'],[/droger|dryer|trockner|s[eè]che-linge/i,'Droger','badkamer'],[/afzuigkap|cooker hood|dunstabzug|hotte|range hood/i,'Afzuigkap','keuken'],[/koelkast|refrigerator|fridge|k[uü]hl|r[eé]frig[eé]rateur/i,'Koelkast','koelkast'],[/vriezer|freezer|gefrier|cong[eé]lateur/i,'Vriezer','koelkast'],[/magnetron|microwave|mikrowelle/i,'Magnetron','keuken'],[/oven|backofen|four\b/i,'Oven','keuken'],[/kookplaat|hob|kochfeld|inductie|induction/i,'Kookplaat','keuken'],[/cv-ketel|combi|boiler|heating|\bgas\b|heizung|chaudi[eè]re|cv\b/i,'Cv-ketel','cv'],[/ventilat|wtw|mvhr|lüftung/i,'Ventilatie','cv'],[/stofzuig|vacuum|staubsauger|aspirateur|deebot|roomba/i,'Stofzuiger','woonkamer'],[/maaier|mower|automower|m[aä]her/i,'Grasmaaier','tuin'],[/koffie|coffee|kaffee|espresso/i,'Koffiemachine','keuken']];
+function parsePlate(txt){
+  const t=String(txt||'').replace(/[|{}\[\]]/g,' ').replace(/[“”"']/g,'');
+  const low=t.toLowerCase();
+  let merk=''; for(const m of MERKEN){ const re=new RegExp('(^|[^a-z0-9])'+m.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'($|[^a-z0-9])'); if(re.test(low)){ merk=m==='Karcher'?'Kärcher':m==='DeLonghi'?"De'Longhi":m; break; } }
+  let type='';
+  const lab=t.match(/(?:^|[^A-Za-z])(?:type|typ|model(?:\s*(?:no|nr|number))?|mod|e-?nr|e-?no|art(?:ikel)?\.?\s*nr|prod(?:uct)?\.?\s*(?:no|nr)|pnc)[ \t]*\.?[ \t]*[:.#=]?[ \t]*([A-Z0-9][A-Za-z0-9 \-\/.]{2,28})/i);
+  if(lab&&/\d/.test(lab[1])) type=lab[1].split(/\s{2,}/)[0].trim();
+  if(!type){ const cands=(t.match(/\b[A-Z0-9][A-Z0-9\-\/]{4,20}\b/g)||[]).filter(c=>/[A-Z]/.test(c)&&/\d/.test(c)&&!/^(19|20)\d\d$/.test(c)&&!/^\d+[.,]?\d*(V|W|HZ|KW|BAR|MPA|MM|CM|KG|L|A|VA|KWH)$/i.test(c)&&!/^IP[X\d]{2}$/i.test(c)); type=cands.sort((a,b)=>b.length-a.length)[0]||''; }
+  type=type.replace(/[.\-\/]+$/,'');
+  let bouwjaar=''; const y=t.match(/(?:bouwjaar|year|jahr|baujahr|bj|prod(?:uction)?\.?\s*(?:date|year)?|mfd|manufactured)\s*[:.]?\s*((?:19|20)\d\d)/i)||t.match(/\b(20[0-3]\d|19[89]\d)\b/); if(y) bouwjaar=y[1];
+  let naam='', spot=''; for(const [re,n,s] of SOORTEN){ if(re.test(t)){ naam=n; spot=s; break; } }
+  return {merk,type,bouwjaar,naam,spot};
+}
+
+let tessP=null, apDraft=null, pendingScan=null, scanBusy=false, scanMsg='';
+function loadTess(){ if(window.Tesseract) return Promise.resolve(window.Tesseract); if(!tessP) tessP=new Promise((res,rej)=>{ const s=document.createElement('script'); s.src='https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js'; s.onload=()=>window.Tesseract?res(window.Tesseract):rej(new Error('tekstherkenning niet beschikbaar')); s.onerror=()=>{ tessP=null; rej(new Error('kan de tekstherkenning niet laden. Is er internet?')); }; document.head.appendChild(s); }); return tessP; }
+async function ocrCanvas(file){ const url=URL.createObjectURL(file); try{ const img=await new Promise((res,rej)=>{ const i=new Image(); i.onload=()=>res(i); i.onerror=()=>rej(new Error('kan de foto niet openen')); i.src=url; });
+  const sc=Math.min(1,2000/Math.max(img.naturalWidth,img.naturalHeight)); const c=document.createElement('canvas'); c.width=Math.round(img.naturalWidth*sc); c.height=Math.round(img.naturalHeight*sc); const x=c.getContext('2d'); x.drawImage(img,0,0,c.width,c.height);
+  const d=x.getImageData(0,0,c.width,c.height), p=d.data, hist=new Array(256).fill(0); const g=new Uint8ClampedArray(p.length/4);
+  for(let i=0,j=0;i<p.length;i+=4,j++){ const v=(p[i]*.299+p[i+1]*.587+p[i+2]*.114)|0; g[j]=v; hist[v]++; }
+  const tot=g.length; let lo=0,hi=255,acc=0; for(let v=0;v<256;v++){ acc+=hist[v]; if(acc>tot*.02){ lo=v; break; } } acc=0; for(let v=255;v>=0;v--){ acc+=hist[v]; if(acc>tot*.02){ hi=v; break; } }
+  const span=Math.max(1,hi-lo); for(let i=0,j=0;i<p.length;i+=4,j++){ const v=Math.max(0,Math.min(255,(g[j]-lo)*255/span)); p[i]=p[i+1]=p[i+2]=v; }
+  x.putImageData(d,0,0); return c; } finally { URL.revokeObjectURL(url); } }
+function scanStatus(t){ scanMsg=t||''; const el=$('#ap-scan-status'); if(el) el.textContent=scanMsg; }
+async function scanPlate(input){ const file=input.files&&input.files[0]; input.value=''; if(!file||scanBusy) return; scanBusy=true;
+  try{
+    scanStatus('Foto voorbereiden…'); pendingScan={big:await shrinkTo(file,1400,.8),thumb:await shrinkTo(file,260,.7)};
+    const can=await ocrCanvas(file);
+    scanStatus('Tekstherkenning laden… (de eerste keer duurt dit even)'); const T=await loadTess();
+    const res=await T.recognize(can,'eng',{logger:m=>{ if(m&&m.status==='recognizing text') scanStatus(`Tekst lezen… ${Math.round((m.progress||0)*100)}%`); }});
+    const txt=(res&&res.data&&res.data.text)||''; const g=parsePlate(txt);
+    apDraft={naam:g.naam,merk:g.merk,type:g.type,bouwjaar:g.bouwjaar,spot:g.spot||'keuken',notitie:'',links:'',_txt:txt.trim().slice(0,1200)};
+    scanStatus(g.merk||g.type?'Gevonden. Kijk het even na en vul aan waar nodig.':'Ik kon geen merk of type herkennen. Vul het zelf in, of probeer een scherpere foto van dichterbij.');
+  }catch(e){ scanStatus('Scannen lukte niet: '+(e&&e.message||'onbekende fout')+'. Je kunt de gegevens ook zelf invullen.'); apDraft=apDraft||{spot:'keuken'}; }
+  finally{ scanBusy=false; const box=$('#ap-settings'); if(box) box.innerHTML=apparatenSettingsHtml(); } }
+function apSmartLinks(a){ const wat=[a.merk,a.type].filter(Boolean).join(' ').trim(); if(!wat) return ''; const q=encodeURIComponent;
+  const L=[[`https://www.google.com/search?q=${q(wat+' handleiding pdf')}`,'Handleiding'],[`https://www.google.com/search?q=${q(wat+' onderdelen')}`,'Onderdelen'],[`https://www.bol.com/nl/nl/s/?searchtext=${q(wat)}`,'Bol.com'],[`https://www.youtube.com/results?search_query=${q(wat+' '+(a.naam||'')+' onderhoud')}`,'Filmpjes']];
+  return `<div class="smart">${L.map(([u,l])=>`<a href="${u}" target="_blank" rel="noopener">${l}</a>`).join('')}</div>`; }
 function apparatenSettingsHtml(){
   const groups=SPOTS.filter(s=>s.id!=='kalender').map(s=>({s,list:S.apparaten.filter(a=>a.spot===s.id).sort((x,y)=>(x.naam||'').localeCompare(y.naam||''))})).filter(g=>g.list.length);
   const fotos=S.fotos.filter(f=>(f.merk||f.type)&&!S.apparaten.some(a=>a.fotoId===f.id));
-  return `<h2>Apparaten</h2><p class="muted" style="margin:0">Noteer merk en type, dan geeft "Hoe doe ik dit?" bij een taak meteen de juiste handleiding, filmpjes en materialen. Koppel een taak aan een apparaat bij Aanpassen van die taak.</p>
-  ${groups.length?groups.map(g=>`<div class="stack" style="gap:6px"><div class="eyebrow">${esc(g.s.name)}</div><ul class="list">${g.list.map(a=>{ const n=S.tasks.filter(t=>t.apparaat===a.id).length; return `<li class="ev"><div><b>${esc(a.naam)}</b>${a.merk||a.type?` <span class="muted">· ${esc([a.merk,a.type].filter(Boolean).join(' '))}</span>`:''}${a.bouwjaar?` <span class="muted">· ${esc(a.bouwjaar)}</span>`:''}</div>${a.notitie?`<div class="muted" style="font-size:.85rem">${esc(a.notitie)}</div>`:''}${linksHtml(a.links)}<div class="muted" style="font-size:.78rem">${n?`Gekoppeld aan ${n} ${n===1?'taak':'taken'}`:'Nog aan geen taak gekoppeld'}</div><details class="edit"><summary>Aanpassen</summary><div style="margin-top:6px">${apForm(a,a.id)}</div></details></li>`; }).join('')}</ul></div>`).join(''):'<div class="empty">Nog geen apparaten genoteerd.</div>'}
+  return `<h2>Apparaten</h2><p class="muted" style="margin:0">Scan het typeplaatje of vul merk en type zelf in. Elk apparaat krijgt dan knoppen naar de handleiding, onderdelen en filmpjes. Koppel een taak aan een apparaat bij Aanpassen van die taak.</p>
+  <div class="row"><label class="btn" for="ap-scan" style="display:inline-flex;gap:8px;align-items:center;cursor:pointer">${CAM} Typeplaatje scannen</label><input type="file" id="ap-scan" class="vh" accept="image/*"></div>
+  <div id="ap-scan-status" class="muted" style="font-size:.85rem" aria-live="polite">${esc(scanMsg)}</div>
+  ${apDraft?`<div class="card stack draft"><b>Nieuw apparaat${pendingScan?' (uit scan)':''}</b>${pendingScan?`<img src="${esc(safeImg(pendingScan.thumb))}" alt="Gescande foto" class="scan-thumb">`:''}${apForm(apDraft,null)}${apDraft._txt?`<details class="vv"><summary>Gelezen tekst</summary><pre class="ocr">${esc(apDraft._txt)}</pre></details>`:''}<div><button class="btn ghost small" data-apdraftx="1">Annuleren</button></div></div>`:''}
+  ${groups.length?groups.map(g=>`<div class="stack" style="gap:6px"><div class="eyebrow">${esc(g.s.name)}</div><ul class="list">${g.list.map(a=>{ const n=S.tasks.filter(t=>t.apparaat===a.id).length; return `<li class="ev"><div><b>${esc(a.naam)}</b>${a.merk||a.type?` <span class="muted">· ${esc([a.merk,a.type].filter(Boolean).join(' '))}</span>`:''}${a.bouwjaar?` <span class="muted">· ${esc(a.bouwjaar)}</span>`:''}</div>${a.notitie?`<div class="muted" style="font-size:.85rem">${esc(a.notitie)}</div>`:''}${linksHtml(a.links)}${apSmartLinks(a)}<div class="muted" style="font-size:.78rem">${n?`Gekoppeld aan ${n} ${n===1?'taak':'taken'}`:'Nog aan geen taak gekoppeld'}</div><details class="edit"><summary>Aanpassen</summary><div style="margin-top:6px">${apForm(a,a.id)}</div></details></li>`; }).join('')}</ul></div>`).join(''):'<div class="empty">Nog geen apparaten genoteerd.</div>'}
   ${fotos.length?`<div class="stack" style="gap:6px"><span class="muted" style="font-size:.85rem">Uit jullie foto's:</span><div class="suggest">${fotos.map(f=>`<button data-apfromfoto="${f.id}">+ ${esc([f.merk,f.type].filter(Boolean).join(' '))}</button>`).join('')}</div></div>`:''}
-  <details class="vv"><summary>Apparaat toevoegen</summary><div style="margin-top:6px">${apForm(null,null)}</div></details>`; }
+  ${apDraft?'':`<details class="vv"><summary>Zelf een apparaat toevoegen</summary><div style="margin-top:6px">${apForm(null,null)}</div></details>`}`; }
 
 function fotoCard(f){
   return `<div class="foto"><button class="foto-open" data-fopen="${f.id}" aria-label="Foto groot bekijken"><img src="${esc(safeImg(f.thumb))}" alt="Foto bij ${esc(SP[f.spot]?.name||'')}"></button><form class="stack" data-fmeta="${f.id}" style="gap:6px;min-width:0">
@@ -687,6 +731,7 @@ document.addEventListener('click',e=>{
   if(b.dataset.caljump){ calSel=b.dataset.caljump; const d=dateFrom(calSel); calMonth=new Date(d.getFullYear(),d.getMonth(),1); if($('#v-kalender').hidden) showTab('kalender'); else renderKalender(); const top=$('#v-kalender .top'); if(top) top.scrollIntoView({behavior:'smooth',block:'start'}); return; }
   if(b.dataset.calday){ calSel=b.dataset.calday; const d=dateFrom(calSel); if(d.getMonth()!==calMonth.getMonth()) calMonth=new Date(d.getFullYear(),d.getMonth(),1); renderKalender(); return; }
   if(b.dataset.calnav){ const n=b.dataset.calnav; if(n==='nu'){ const t=new Date(); calMonth=new Date(t.getFullYear(),t.getMonth(),1); calSel=ymd(t); } else calMonth=new Date(calMonth.getFullYear(),calMonth.getMonth()+(n==='+'?1:-1),1); renderKalender(); return; }
+  if(b.dataset.apdraftx){ apDraft=null; pendingScan=null; scanStatus(''); $('#ap-settings').innerHTML=apparatenSettingsHtml(); return; }
   if(b.dataset.apdel){ if(!b.dataset.armed){ b.dataset.armed='1'; b.textContent='Zeker?'; return; } const id=b.dataset.apdel; safe(del('apparaten',id)); S.tasks.filter(t=>t.apparaat===id).forEach(t=>safe(put('tasks',t.id,{apparaat:null},true))); return; }
   if(b.dataset.apfromfoto){ const f=S.fotos.find(x=>x.id===b.dataset.apfromfoto); if(f){ b.disabled=true; safe(put('apparaten',uid(),{spot:f.spot,naam:f.notitie?f.notitie.slice(0,80):(SP[f.spot]?.name||'Apparaat'),merk:f.merk||'',type:f.type||'',bouwjaar:'',notitie:'',links:'',fotoId:f.id})); } return; }
   if(b.dataset.instpage!==undefined){ instPage=b.dataset.instpage||null; fillSettings(); window.scrollTo(0,0); return; }
@@ -718,6 +763,7 @@ document.addEventListener('toggle',e=>{ const d=e.target; if(d&&d.dataset&&d.dat
 document.addEventListener('change',e=>{ const el=e.target;
   if(el.name==='ritme'){ const f=el.closest('form'); f.querySelectorAll('[data-r]').forEach(x=>x.hidden=x.dataset.r!==el.value); }
   if(el.id==='foto-in') handlePhoto(el);
+  if(el.id==='ap-scan') scanPlate(el);
   if(el.id==='who-sel'){ kiesIk(el.value); } });
 document.addEventListener('submit',e=>{
   const f=e.target; e.preventDefault();
@@ -727,7 +773,9 @@ document.addEventListener('submit',e=>{
     if(f.dataset.mode==='once'){ safe(addOnce(openSpot,n,f.elements.due.value,cat,pts,wie,readVervolg(f),readUitleg(f))); if(openSub&&openSub!=='eenmalig'&&openSub!==cat) openSub=cat; }
     else { const R=readRitme(f); safe(addTask(openSpot,n,R.everyDays,cat,pts,R,wie,readVervolg(f),readUitleg(f))); if(openSub&&openSub!==cat) openSub=cat; } }
   else if(f.dataset.edit){ safe(put('tasks',f.dataset.edit,{name:f.elements.name.value.trim()||'Taak',...(({perSeizoen,trigger,everyDays})=>({perSeizoen,trigger,everyDays}))(readRitme(f)),spot:f.elements.spot.value,cat:f.elements.cat.value,wie:validWie(f.elements.wie.value),vervolg:readVervolg(f),...readUitleg(f),punten:clampPts(f.elements.punten.value,null)},true)); }
-  else if(f.id==='f-ap'){ const d=readAp(f); if(document.activeElement) document.activeElement.blur(); if(d.naam) safe(put('apparaten',uid(),d)); }
+  else if(f.id==='f-ap'){ const d=readAp(f); if(document.activeElement) document.activeElement.blur(); if(!d.naam) return; const id=uid();
+    if(pendingScan){ const fid=uid(), sc=pendingScan; d.fotoId=fid; Store.set('fotobestand',fid,{img:sc.big}).then(()=>put('fotos',fid,{spot:d.spot,thumb:sc.thumb,at:new Date().toISOString(),by:S.meId,merk:d.merk,type:d.type,notitie:d.naam})).catch(()=>{}); }
+    apDraft=null; pendingScan=null; scanMsg=''; safe(put('apparaten',id,d)); }
   else if(f.dataset.apedit){ const d=readAp(f); if(document.activeElement) document.activeElement.blur(); if(d.naam) safe(put('apparaten',f.dataset.apedit,d,true)); }
   else if(f.id==='f-kal-af'){ const t=f.elements.titel.value.trim(); if(t) safe(addAfspraak(t.slice(0,120),calSel,f.elements.prep.value.trim().slice(0,240))); }
   else if(f.dataset.onceedit){ const due=f.elements.due.value; safe(put('tasks',f.dataset.onceedit,{name:f.elements.name.value.trim()||'Taak',due:/^\d{4}-\d{2}-\d{2}$/.test(due)?due:null,wie:validWie(f.elements.wie.value),vervolg:readVervolg(f),...readUitleg(f)},true)); }
