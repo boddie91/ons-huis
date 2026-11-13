@@ -174,7 +174,7 @@ window.ONS_HUIS_SEED = [
   "lastBy": null,
   "lastDone": "2026-11-03T19:00:00Z",
   "name": "Voorraadronde keukenkast",
-  "spot": "koelkast"
+  "spot": "voorraadkast"
  },
  {
   "id": "t19",
@@ -182,7 +182,7 @@ window.ONS_HUIS_SEED = [
   "lastBy": null,
   "lastDone": "2026-10-17T19:00:00Z",
   "name": "Huishoudvoorraad (wc-papier, wasmiddel)",
-  "spot": "koelkast"
+  "spot": "voorraadkast"
  },
  {
   "id": "t20",
@@ -472,5 +472,162 @@ window.ONS_HUIS_SEED = [
   },
   "lastDone": "2026-04-10T12:00:00Z",
   "lastBy": null
+ },
+ {
+  "id": "t50",
+  "spot": "wc",
+  "cat": "schoonmaak",
+  "name": "Wc beneden schoonmaken",
+  "everyDays": 7,
+  "lastDone": "2026-11-08T10:00:00Z",
+  "lastBy": null
+ },
+ {
+  "id": "t51",
+  "spot": "wc",
+  "cat": "opruimen",
+  "name": "Handdoekje en zeep wc beneden",
+  "everyDays": 7,
+  "lastDone": "2026-11-06T10:00:00Z",
+  "lastBy": null
+ },
+ {
+  "id": "t52",
+  "spot": "was",
+  "cat": "opruimen",
+  "name": "Was draaien",
+  "everyDays": 3,
+  "lastDone": "2026-11-11T09:00:00Z",
+  "lastBy": null,
+  "vervolg": {
+   "naam": "Was ophangen of in de droger",
+   "uren": 2,
+   "wie": null
+  }
+ },
+ {
+  "id": "t53",
+  "spot": "was",
+  "cat": "schoonmaak",
+  "name": "Pluizenfilter droger legen",
+  "everyDays": 7,
+  "lastDone": "2026-11-09T10:00:00Z",
+  "lastBy": null
+ },
+ {
+  "id": "t54",
+  "spot": "was",
+  "cat": "schoonmaak",
+  "name": "Wasmachine reinigen (90 graden en zeepbakje)",
+  "everyDays": 30,
+  "lastDone": "2026-10-20T10:00:00Z",
+  "lastBy": null
+ },
+ {
+  "id": "t55",
+  "spot": "was",
+  "cat": "schoonmaak",
+  "name": "Condensbak en filter droger schoonmaken",
+  "everyDays": 30,
+  "lastDone": "2026-10-25T10:00:00Z",
+  "lastBy": null
+ },
+ {
+  "id": "t56",
+  "spot": "robot",
+  "cat": "schoonmaak",
+  "name": "Stofbak robotstofzuiger legen",
+  "everyDays": 3,
+  "lastDone": "2026-11-11T10:00:00Z",
+  "lastBy": null
+ },
+ {
+  "id": "t57",
+  "spot": "robot",
+  "cat": "onderhoud",
+  "name": "Borstels en wielen robotstofzuiger schoonmaken",
+  "everyDays": 14,
+  "lastDone": "2026-11-01T10:00:00Z",
+  "lastBy": null
+ },
+ {
+  "id": "t58",
+  "spot": "robot",
+  "cat": "onderhoud",
+  "name": "Filter robotstofzuiger vervangen",
+  "everyDays": 90,
+  "lastDone": "2026-09-01T10:00:00Z",
+  "lastBy": null,
+  "materiaal": "filter robotstofzuiger"
+ },
+ {
+  "id": "t59",
+  "spot": "robot",
+  "cat": "schoonmaak",
+  "name": "Dweilpad wassen",
+  "everyDays": 7,
+  "lastDone": "2026-11-07T10:00:00Z",
+  "lastBy": null
+ },
+ {
+  "id": "t60",
+  "spot": "maaier",
+  "cat": "schoonmaak",
+  "name": "Robotmaaier schoonmaken",
+  "everyDays": 21,
+  "lastDone": "2026-10-15T10:00:00Z",
+  "lastBy": null,
+  "perSeizoen": {
+   "lente": 21,
+   "zomer": 14,
+   "herfst": 30,
+   "winter": 0
+  }
+ },
+ {
+  "id": "t61",
+  "spot": "maaier",
+  "cat": "onderhoud",
+  "name": "Messen robotmaaier vervangen",
+  "everyDays": 60,
+  "lastDone": "2026-07-01T10:00:00Z",
+  "lastBy": null,
+  "perSeizoen": {
+   "lente": 90,
+   "zomer": 60,
+   "herfst": 0,
+   "winter": 0
+  },
+  "materiaal": "messen robotmaaier"
+ },
+ {
+  "id": "t62",
+  "spot": "maaier",
+  "cat": "onderhoud",
+  "name": "Robotmaaier winterklaar maken en stallen",
+  "everyDays": 365,
+  "lastDone": "2025-11-01T10:00:00Z",
+  "lastBy": null,
+  "perSeizoen": {
+   "lente": 0,
+   "zomer": 0,
+   "herfst": 365,
+   "winter": 365
+  }
+ },
+ {
+  "id": "t63",
+  "spot": "maaier",
+  "cat": "onderhoud",
+  "name": "Robotmaaier uit de winterstalling halen",
+  "everyDays": 365,
+  "lastDone": "2026-03-25T10:00:00Z",
+  "lastBy": null,
+  "perSeizoen": {
+   "lente": 365,
+   "zomer": 0,
+   "herfst": 0,
+   "winter": 0
+  }
  }
 ];

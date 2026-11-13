@@ -13,6 +13,11 @@ const SPOTS=[
   {id:'keuken',name:'Aanrecht en kookhoek',room:'Keuken',x:252,y:290},
   {id:'kluis',name:'Kluis',room:'Geldzaken',x:372,y:296},
   {id:'afval',name:'Prullenbak',room:'Voortuin',x:121,y:350},
+  {id:'wc',name:'Wc beneden',room:'Aanbouw',x:21,y:290},
+  {id:'was',name:'Wasmachine en droger',room:'Bijkeuken',x:48,y:284},
+  {id:'voorraadkast',name:'Voorraadkast',room:'Bijkeuken',x:68,y:262},
+  {id:'robot',name:'Robotstofzuiger',room:'Woonkamer',x:138,y:315},
+  {id:'maaier',name:'Robotmaaier',room:'Tuin',x:270,y:370},
   {id:'tuin',name:'Tuin',room:'Buiten',x:30,y:206},
   {id:'auto',name:'Twingo',room:'Oprit',x:372,y:348},
   {id:'auto2',name:'Lynk & Co',room:'Straat',x:284,y:398}
@@ -101,6 +106,7 @@ function fresh(t){ if(t.once){ if(t.done) return 1; if(!t.due) return .7; const 
 function daysAgo(t){ if(!t.lastDone) return null; return Math.floor((Date.now()-new Date(t.lastDone))/DAY); }
 function spotHealth(id){
   if(id==='kalender'){ return Math.max(0,1-.3*reminders().length); }
+  if(id==='voorraadkast'){ const vt=S.tasks.filter(t=>isVoorraadTask(t)&&isActive(t)); const base=vt.length?vt.reduce((a,t)=>a+fresh(t),0)/vt.length:1; return Math.max(0,base-.12*shortages().length); }
   const ts=S.tasks.filter(t=>spotOf(t)===id&&isActive(t)); if(!ts.length) return 1; return ts.reduce((a,t)=>a+fresh(t),0)/ts.length; }
 function stateColor(h){ return h>=.6?css('--good'):h>=.3?css('--warn'):css('--bad'); }
 function lerp(a,b,t){ t=Math.max(0,Math.min(1,t)); const p=x=>[1,3,5].map(i=>parseInt(x.slice(i,i+2),16)); const A=p(a),B=p(b); return '#'+A.map((v,i)=>Math.round(v+(B[i]-v)*t).toString(16).padStart(2,'0')).join(''); }
@@ -230,7 +236,7 @@ function drawScene(){
   $('#markers').innerHTML=SPOTS.map(s=>{ const v=spotHealth(s.id); if(v<.3) return `<circle cx="${s.x}" cy="${s.y}" r="5" fill="none" stroke="#e5533f" stroke-width="2" class="pulse"/><circle cx="${s.x}" cy="${s.y}" r="3.2" fill="#e5533f"/>`; return ''; }).join('');
   // vuil en glans
   let fxs='';
-  const dirtAt={keuken:[257,284,ke],badkamer:[296,200,ba],afval:[121,352,af],koelkast:[300,250,ko]};
+  const dirtAt={wc:[21,304,spotHealth('wc')],keuken:[257,284,ke],badkamer:[296,200,ba],afval:[121,352,af],koelkast:[300,250,ko]};
   Object.entries(dirtAt).forEach(([id,[x,y,v]])=>{ if(v<.45) fxs+=stinkSvg(x,y,v); if(v<.32) fxs+=fliesSvg(x,y-6,v<.15?5:3,id); });
   SPOTS.forEach(s=>{ const v=spotHealth(s.id); if(s.id==='kalender') return; const g=GLINT_AT[s.id]||[s.x,s.y,14]; if(v>=.97) fxs+=glitterSvg(g[0],g[1],g[2],6,s.id); else if(v>=.85) fxs+=glitterSvg(g[0],g[1],g[2]*.6,2,s.id); });
   $('#fx').innerHTML=fxs;
@@ -240,11 +246,41 @@ function drawScene(){
   setA('smoke','opacity',all>.6?1:0);
   setA('bunting','opacity',all>.8?1:0);
   $('#houseglitter').innerHTML=all>=.95?glitterSvg(200,190,120,18,'huis')+`<path class="shine" d="M70 334 Q200 150 330 334" stroke="url(#rainbowg)" stroke-width="7" fill="none"/>`:'';
+  drawExtras();
   if(!$('#flags').innerHTML){ const cols=['#e8618c','#f2b53a','#4f8a3c','#3f78b5','#d9703f']; let f=''; for(let i=0;i<11;i++){ const x=94+i*20.5, t=(x-84)/232, y=139+4*13*t*(1-t)*0.9; f+=`<path d="M${x-5} ${y} L${x+5} ${y} L${x} ${y+9}Z" fill="${cols[i%5]}"/>`; } $('#flags').innerHTML=f; }
 }
 
+/* ---------- aanbouw, robots en seizoen ---------- */
+function healthBy(re,spot){ const ts=S.tasks.filter(t=>(!spot||spotOf(t)===spot)&&!t.once&&re.test(t.name||'')&&isActive(t)); if(!ts.length) return null; return ts.reduce((a,t)=>a+fresh(t),0)/ts.length; }
+function doneToday(re){ const d=ymd(new Date()); return S.tasks.some(t=>re.test(t.name||'')&&t.lastDone&&ymd(new Date(t.lastDone))===d); }
+function drawExtras(){
+  const now=new Date(), sz=season(now);
+  const wc=spotHealth('wc'); setA('wcdirt','opacity',Math.max(0,Math.min(1,(.6-wc)*2.2)).toFixed(2));
+  const was=spotHealth('was'), n=Math.round((1-was)*8), cols=['#c45d5d','#5d7fc4','#e8c77a','#7aa36b','#f4f4f2','#9a6ad6','#e68f6d','#4f7d74'];
+  let pile=''; for(let i=0;i<n;i++){ const x=41+(i*6)%18, y=327-Math.floor(i/3)*3.4; pile+=`<ellipse cx="${x+2}" cy="${y}" rx="4.2" ry="2.3" fill="${cols[i%8]}" stroke="#00000030" stroke-width=".4"/>`; }
+  $('#washpile').innerHTML=pile; setA('lint','opacity',was<.4?1:0);
+  const vh=spotHealth('voorraadkast'), slots=[], fill=Math.max(.1,Math.min(1,vh));
+  [281,296,311,326].forEach((yb,r)=>{ for(let c=0;c<4;c++) slots.push([60.5+c*4.1,yb,r,c]); });
+  const show=Math.round(fill*slots.length), sc=['#d98b3a','#c9b04a','#a8574a','#5d7fc4','#7aa36b','#e8c77a','#c45d5d','#9a6ad6'];
+  $('#shelves').innerHTML=slots.map(([x,yb,r,c],i)=>{ if(((i*7)%slots.length)>=show) return ''; const h=6+((i*3)%5); return r%2?`<rect x="${x}" y="${yb-h-.8}" width="3.4" height="${h}" rx=".8" fill="${sc[i%8]}"/>`:`<rect x="${x}" y="${yb-h-.8}" width="3.4" height="${h}" rx="1.4" fill="#ffffff" opacity=".85"/><rect x="${x+.4}" y="${yb-h*.55-.8}" width="2.6" height="${h*.55}" fill="${sc[i%8]}"/>`; }).join('');
+  const rb=spotHealth('robot'), led=$('#robotled'); led.setAttribute('fill',rb>=.6?'#5fd17a':rb>=.3?'#f0b84a':'#e5533f'); led.classList.toggle('blink',rb<.3); $('#robotvac').classList.toggle('cruise',rb>=.6); setA('robothair','opacity',rb<.45?1:0);
+  const winter=sz==='winter', mh=spotHealth('maaier'), ml=$('#maaierled');
+  setA('maaierOut','opacity',winter?0:1); setA('maaierIn','opacity',winter?1:0); setA('maaierdirt','opacity',!winter&&mh<.45?1:0);
+  ml.setAttribute('fill',mh>=.6?'#5fd17a':mh>=.3?'#f0b84a':'#e5533f'); ml.classList.toggle('blink',mh<.3); $('#maaierOut').classList.toggle('mow',!winter&&mh>=.6);
+  const gh=healthBy(/maai|gras/i,'tuin'), grow=winter?0:sz==='herfst'?.5:1, long=grow*(1-Math.max(gh==null?.6:gh,mh));
+  const tn=Math.round(long*26); let tf=''; for(let i=0;i<tn;i++){ const left=i%3!==0; const x=left?4+((i*37)%88):232+((i*29)%60), y=350+((i*53)%52); if(!left&&x>255&&x<290&&y>374) continue; const hgt=4+long*6; tf+=`<path d="M${x} ${y} l-1.5 ${-hgt} M${x+1.5} ${y} l0 ${-hgt-1.5} M${x+3} ${y} l1.5 ${-hgt}" stroke="#4f8a3c" stroke-width="1.1" stroke-linecap="round"/>`; }
+  $('#tufts').innerHTML=tf;
+  const tsH=healthBy(/tuinmeubel/i); setA('tuinset','opacity',(sz==='lente'||sz==='zomer')?1:0); setA('tuinsetdirt','opacity',tsH==null?0:Math.max(0,Math.min(1,(.65-tsH)*2)).toFixed(2));
+  const bl=healthBy(/blad/i), lp=sz==='herfst'?(bl==null?.3:1-bl):0; setA('leafpiles','opacity',lp>.25?Math.min(1,lp*1.3).toFixed(2):0);
+  const snowNow=triggerOn('sneeuw'), frost=triggerOn('vorst'), schuif=doneToday(/sneeuw/i), strooi=doneToday(/strooi|zout/i);
+  setA('pathsnow','opacity',snowNow&&!schuif?1:0); setA('pathbanks','opacity',snowNow&&schuif?1:0); setA('pathice','opacity',frost&&!strooi&&!(snowNow&&!schuif)?1:0); setA('salt','opacity',frost&&strooi?1:0); setA('annexsnow','opacity',weerNu()==='sneeuw'?1:0);
+  const m=now.getMonth(), d=now.getDate(); let boom=false;
+  if(m===11||(m===0&&d<=6)){ const yr=m===11?now.getFullYear():now.getFullYear()-1; const e=occurrences([yr]).find(x=>x.titel==='Eerste kerstdag'); const it=e&&prepItems(e).find(i=>/kerstboom/i.test(i.titel)); boom=it?isGeregeld(e,it):(m===11&&d>=10)||m===0; }
+  setA('kerstboom','opacity',boom?1:0); setA('lamp','opacity',boom?0:1);
+}
+
 /* ---------- vuil en glans ---------- */
-const GLINT_AT={dak:[200,96,40],cv:[239,108,16],bed:[130,208,22],kast:[184,190,16],badkamer:[262,196,30],woonkamer:[124,300,28],hal:[196,300,14],koelkast:[300,290,14],keuken:[252,292,22],kluis:[372,312,16],tuin:[60,330,40],auto:[376,370,30],auto2:[282,418,30],afval:[121,372,18]};
+const GLINT_AT={wc:[21,300,14],was:[48,306,14],voorraadkast:[68,296,12],robot:[140,322,12],maaier:[272,382,16],dak:[200,96,40],cv:[239,108,16],bed:[130,208,22],kast:[184,190,16],badkamer:[262,196,30],woonkamer:[124,300,28],hal:[196,300,14],koelkast:[300,290,14],keuken:[252,292,22],kluis:[372,312,16],tuin:[60,330,40],auto:[376,370,30],auto2:[282,418,30],afval:[121,372,18]};
 function seeded(i,salt){ let h=2166136261; for(const c of salt+':'+i){ h^=c.charCodeAt(0); h=Math.imul(h,16777619); } return (h>>>0)/4294967295; }
 function glitterSvg(x,y,r,n,salt){ let s=''; for(let i=0;i<n;i++){ const a=seeded(i,salt+'a')*Math.PI*2, rr=r*(.25+.75*seeded(i,salt+'r')), px=(x+Math.cos(a)*rr).toFixed(1), py=(y+Math.sin(a)*rr*.75).toFixed(1), k=1.4+seeded(i,salt+'k')*2.2, d=(seeded(i,salt+'d')*1.8).toFixed(2);
   s+=`<path class="glint" style="animation-delay:-${d}s" d="M${px} ${py-k*2}L${+px+k*.45} ${py-k*.45}L${+px+k*2} ${py}L${+px+k*.45} ${+py+k*.45}L${px} ${+py+k*2}L${px-k*.45} ${+py+k*.45}L${px-k*2} ${py}L${px-k*.45} ${py-k*.45}Z" fill="#fffbe6" stroke="#f0c94a" stroke-width=".5"/>`; } return s; }
@@ -406,7 +442,7 @@ function flyOut(yes){ const card=document.getElementById('swipe-card'); if(!card
 
 /* ---------- foto's ---------- */
 const CAM=`<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>`;
-const PHOTO_HINT={auto2:'Bijv. het kentekenbewijs, een dashboardlampje of de banden.',afval:'Bijv. de afvalkalender van de gemeente, zodat je de ophaaldagen bij de hand hebt.',koelkast:'Bijv. de binnenkant van koelkast of vriezer, of het typeplaatje.',cv:'Bijv. de cv-ketel, het typeplaatje of de drukmeter.',keuken:'Bijv. het typeplaatje van afzuigkap, oven of vaatwasser.',badkamer:'Bijv. wasmachine, droger of het typeplaatje daarvan.',auto:'Bijv. het kentekenbewijs, een dashboardlampje of de banden.',tuin:'Bijv. de robotmaaier, het gereedschap of een plant.',kast:'Bijv. de sokkenla of een stapel versleten kleding.'};
+const PHOTO_HINT={robot:'Bijv. het typeplaatje onder de robot of de borstels.',maaier:'Bijv. het typeplaatje of de messen van de maaier.',was:'Bijv. het typeplaatje van wasmachine of droger, of het wasvoorschrift.',auto2:'Bijv. het kentekenbewijs, een dashboardlampje of de banden.',afval:'Bijv. de afvalkalender van de gemeente, zodat je de ophaaldagen bij de hand hebt.',koelkast:'Bijv. de binnenkant van koelkast of vriezer, of het typeplaatje.',cv:'Bijv. de cv-ketel, het typeplaatje of de drukmeter.',keuken:'Bijv. het typeplaatje van afzuigkap, oven of vaatwasser.',badkamer:'Bijv. wasmachine, droger of het typeplaatje daarvan.',auto:'Bijv. het kentekenbewijs, een dashboardlampje of de banden.',tuin:'Bijv. de robotmaaier, het gereedschap of een plant.',kast:'Bijv. de sokkenla of een stapel versleten kleding.'};
 const safeImg=u=>typeof u==='string'&&/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+\/=]+$/.test(u)?u:'';
 /* ---------- apparaten en uitleg ---------- */
 const WRENCH=`<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 5.5a4 4 0 0 0 5 5L12 18a2.1 2.1 0 0 1-3-3l7.5-7.5a4 4 0 0 0-2-2z"/><path d="M6 20l-2-2"/></svg>`;
@@ -638,7 +674,7 @@ function renderWheel(){
 
 /* ---------- sheet ---------- */
 let openSpot=null, openSub=null;
-const GROUPS=[{id:'huis',name:'Huis',spots:['dak','cv','bed','kast','badkamer','woonkamer','hal','kalender','koelkast','keuken','kluis','afval']},{id:'tuin',name:'Tuin',spots:['tuin']},{id:'auto',name:'Auto',spots:['auto','auto2']}];
+const GROUPS=[{id:'huis',name:'Huis',spots:['dak','cv','bed','kast','badkamer','woonkamer','robot','hal','wc','keuken','koelkast','was','voorraadkast','kluis','afval','kalender']},{id:'tuin',name:'Tuin',spots:['tuin','maaier']},{id:'auto',name:'Auto',spots:['auto','auto2']}];
 const GR=Object.fromEntries(GROUPS.map(g=>[g.id,g]));
 function spotAttention(id){ return id==='kalender'?reminders().length:S.tasks.filter(t=>spotOf(t)===id&&isActive(t)&&fresh(t)<.15).length; }
 function groupHealth(g){ return g.spots.reduce((a,id)=>a+spotHealth(id),0)/g.spots.length; }
@@ -646,7 +682,7 @@ function groupAttention(g){ return g.spots.reduce((a,id)=>a+spotAttention(id),0)
 let openFrom=null;
 function openGroup(gid){ const g=GR[gid]; if(!g) return; if(g.spots.length===1){ openFrom=null; return openSheet(g.spots[0]); } openFrom=null; openSheet('groep:'+gid); }
 function groupHtml(g){ return `<div class="tiles">${g.spots.map(id=>{ const s=SP[id], n=spotAttention(id); return `<button class="tile" data-gospot="${id}">${ring(spotHealth(id),40)}<span class="tn">${esc(s.name)}</span><span class="ts">${n?`${n} vraagt aandacht`:esc(s.room)}</span></button>`; }).join('')}</div>`; }
-function openSheet(id,sub){ if(id==='kalender'){ closeSheet(); showTab('kalender'); return; } if(!SP[id]&&id!=='swipe'&&id!=='swipe-solo'&&!/^groep:/.test(id)) return; openSpot=id; openSub=sub||null; $('#scrim').hidden=false; $('#sheet').hidden=false; renderSheet(); $('#sheet').scrollTop=0; }
+function openSheet(id,sub){ if(id==='kalender'){ closeSheet(); showTab('kalender'); return; } if(id==='voorraadkast'){ closeSheet(); lijstView='voorraad'; showTab('lijst'); return; } if(!SP[id]&&id!=='swipe'&&id!=='swipe-solo'&&!/^groep:/.test(id)) return; openSpot=id; openSub=sub||null; $('#scrim').hidden=false; $('#sheet').hidden=false; renderSheet(); $('#sheet').scrollTop=0; }
 function closeSheet(){ openFrom=null; openSpot=null; openSub=null; $('#scrim').hidden=true; $('#sheet').hidden=true; }
 function taskMeta(t){ const d=daysAgo(t); const who=personName(t.lastBy); const when=d===null?'nog nooit':d===0?'vandaag':d===1?'gisteren':`${d} dagen geleden`; let rit; if(t.trigger) rit=triggerOn(t.trigger)?`nu nodig (${TRIG[t.trigger]})`:`slaapt · ${TRIG[t.trigger]||''}`; else if(t.perSeizoen){ const e=interval(t), sz=season(new Date()); rit=e>0?`nu elke ${e} dagen (${sz})`:`rust in de ${sz}`; } else rit=`elke ${t.everyDays} dagen`;
   const e=interval(t); const vol=!t.trigger&&e>=28&&t.lastDone?new Date(new Date(t.lastDone).getTime()+e*DAY):null;
@@ -742,7 +778,7 @@ function renderSheet(){
     ${openFrom&&!openSub?`<button class="back" data-backgroup="${openFrom}">‹ Terug naar ${esc(GR[openFrom].name)}</button>`:''}
     ${ASKS[openSpot]&&!openSub?`<button class="askbtn" data-askfill="${esc(ASKS[openSpot])}">Vraag de vraagbaak hierover</button>`:''}${body}`;
 }
-function defaultCat(spot){ return {auto2:'onderhoud',afval:'opruimen',kluis:'geld',hal:'planning',koelkast:'voorraad',kast:'opruimen',tuin:'onderhoud',auto:'onderhoud',dak:'onderhoud',cv:'onderhoud'}[spot]||'schoonmaak'; }
+function defaultCat(spot){ return {wc:'schoonmaak',was:'opruimen',robot:'onderhoud',maaier:'onderhoud',voorraadkast:'voorraad',auto2:'onderhoud',afval:'opruimen',kluis:'geld',hal:'planning',koelkast:'voorraad',kast:'opruimen',tuin:'onderhoud',auto:'onderhoud',dak:'onderhoud',cv:'onderhoud'}[spot]||'schoonmaak'; }
 
 /* ---------- writes ---------- */
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
@@ -778,7 +814,7 @@ function safe(p){ Promise.resolve(p).catch(e=>{ $('#banner').hidden=false; $('#b
 function showTab(v){ document.querySelectorAll('.tab').forEach(t=>t.setAttribute('aria-selected',t.dataset.v===v)); ['huis','lijst','kalender','punten','inst'].forEach(x=>$('#v-'+x).hidden=x!==v); renderKalender(); if(v==='punten') renderRewardSettings(); window.scrollTo(0,0); if(v==='inst'){ instPage=null; fillSettings(); } renderLijst(); }
 document.addEventListener('click',e=>{
   const gEl=e.target.closest('[data-group]'); if(gEl&&!e.target.closest('#sheet')){ openGroup(gEl.dataset.group); return; }
-  const goEl=e.target.closest('[data-gospot]'); if(goEl&&goEl.dataset.gospot==='kalender'){ closeSheet(); showTab('kalender'); return; } if(goEl){ openFrom=openSpot.slice(6); openSpot=goEl.dataset.gospot; openSub=null; renderSheet(); $('#sheet').scrollTop=0; return; }
+  const goEl=e.target.closest('[data-gospot]'); if(goEl&&goEl.dataset.gospot==='kalender'){ closeSheet(); showTab('kalender'); return; } if(goEl&&goEl.dataset.gospot==='voorraadkast'){ closeSheet(); lijstView='voorraad'; showTab('lijst'); return; } if(goEl){ openFrom=openSpot.slice(6); openSpot=goEl.dataset.gospot; openSub=null; renderSheet(); $('#sheet').scrollTop=0; return; }
   const bgEl=e.target.closest('[data-backgroup]'); if(bgEl){ const g=bgEl.dataset.backgroup; openFrom=null; openSpot='groep:'+g; openSub=null; renderSheet(); return; }
   const sEl=e.target.closest('[data-spot]'); if(sEl&&!e.target.closest('#sheet')&&!e.target.closest('button[data-regel]')){ openSheet(sEl.dataset.spot,sEl.dataset.opensub); return; }
   const b=e.target.closest('button,input[type=checkbox]'); if(!b) return;
@@ -1014,7 +1050,7 @@ function showLock(msg){ $('#lock').hidden=false; $('#lock-err').textContent=msg|
 async function tryCode(code){ if(!code) return; $('#lock-err').textContent='Even controleren…'; Store.setCode(code);
   try{ const {rows,full}=await Store.changes(); lsSet(LS.code,code); $('#lock').hidden=true; applyRows(rows,full); lastFull=Date.now(); afterLoad(); }
   catch(e){ $('#lock-err').textContent=e&&e.code==='bad_code'?'Deze code klopt niet.':e&&e.code==='offline'?'Geen verbinding. Is er internet?':'Er ging iets mis: '+(e&&e.message||'onbekend'); } }
-const MIGRATIES=[{id:'apk_twingo_20260717',run(){ const apk=S.tasks.filter(t=>spotOf(t)==='auto'&&!t.once&&/\bapk\b/i.test(t.name||''));
+const MIGRATIES=[{id:'voorraadkast_2026',run(){ return S.tasks.filter(t=>isVoorraadTask(t)&&spotOf(t)==='koelkast').map(t=>({op:'merge',c:'tasks',id:t.id,data:{spot:'voorraadkast'}})); }},{id:'apk_twingo_20260717',run(){ const apk=S.tasks.filter(t=>spotOf(t)==='auto'&&!t.once&&/\bapk\b/i.test(t.name||''));
   const ld=new Date('2026-07-17T12:00:00').toISOString();
   if(apk.length) return apk.filter(t=>!t.lastDone||new Date(t.lastDone)<new Date(ld)).map(t=>({op:'merge',c:'tasks',id:t.id,data:{lastDone:ld,everyDays:365,perSeizoen:null,trigger:null}}));
   return [{op:'set',c:'tasks',id:'apk-twingo',data:{spot:'auto',cat:'onderhoud',name:'APK',everyDays:365,lastDone:ld,lastBy:null,punten:null}}]; }}];
