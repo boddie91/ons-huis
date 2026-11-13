@@ -24,7 +24,7 @@ function catOf(t){ if(CATN[t.cat]) return t.cat; const sp=SP[t.spot]?t.spot:(LEG
   if(/voorraad|sokken|medicijn/.test(n)) return 'voorraad'; if(/schoon|stofzuig|lappen|wassen|verschon|uitmest|harken|poets|dweil/.test(n)) return 'schoonmaak'; if(/opruim|seizoen/.test(n)) return 'opruimen'; return 'onderhoud'; }
 const dateFrom=s=>{ const [y,m,d]=String(s).split('-').map(Number); return new Date(y,(m||1)-1,d||1); };
 const DAY=864e5;
-const S={loaded:false,connecting:false,apparaten:[],tasks:[],shopping:[],afspraken:[],dagen:[],geregeld:{},log:[],profiles:{},hh:{},beloningen:[],gewonnen:[],swipes:[],fotos:[],meId:null,demo:false};
+const S={loaded:false,connecting:false,apparaten:[],voorraad:[],tasks:[],shopping:[],afspraken:[],dagen:[],geregeld:{},log:[],profiles:{},hh:{},beloningen:[],gewonnen:[],swipes:[],fotos:[],meId:null,demo:false};
 const LS={code:'onshuis-code',me:'onshuis-ik',weer:'onshuis-weer'};
 const lsGet=k=>{ try{ return localStorage.getItem(k); }catch(_){ return null; } };
 const lsSet=(k,v)=>{ try{ if(v===null) localStorage.removeItem(k); else localStorage.setItem(k,v); }catch(_){ } };
@@ -427,14 +427,57 @@ function hoeHtml(t){ const a=apOf(t); const wat=[a&&a.merk,a&&a.type].filter(Boo
     <ul class="links auto">${auto.map(x=>`<li>${x}</li>`).join('')}</ul>
     ${!steps.length&&!t.links&&!t.materiaal?'<span class="muted" style="font-size:.8rem">Voeg bij Aanpassen een stappenplan, materiaal of eigen links toe.</span>':''}
   </div></details>`; }
+
+/* ---------- slimme voorraad ---------- */
+const STARTLIJST={
+  keuken:[['Pasta','pakken',2],['Rijst','pakken',1],['Olijfolie','flessen',1],['Koffie','pakken',1],['Thee','doosjes',1],['Tomatenblokjes','blikken',2],['Bloem','pakken',1],['Suiker','pakken',1],['Pindakaas','potten',1]],
+  huishoud:[['Wc-papier','rollen',6],['Keukenrol','rollen',2],['Vaatwastabletten','stuks',15],['Wasmiddel','flessen',1],['Afwasmiddel','flessen',1],['Vuilniszakken','rollen',1],['Handzeep','flessen',1],['Allesreiniger','flessen',1]],
+  medicijn:[['Paracetamol','strips',2],['Ibuprofen','strips',1],['Pleisters','doosjes',1],['Desinfectiemiddel','flessen',1],['Zonnebrand','tubes',1]]
+};
+function startSet(t){ const n=(t.name||'').toLowerCase(); return /medicijn|ehbo/.test(n)?'medicijn':/huishoud|wc|wasmiddel|schoonmaak/.test(n)?'huishoud':'keuken'; }
+function itemsOf(t){ return S.voorraad.filter(i=>i.taak===t.id).sort((a,b)=>(a.naam||'').localeCompare(b.naam||'')); }
+function isVoorraadTask(t){ if(!t||t.once) return false; if(t.voorraad===true) return true; if(t.voorraad===false) return false; return /voorraad|medicijnkast/i.test(t.name||'')||S.voorraad.some(i=>i.taak===t.id); }
+function predicted(i){ if(i.lastCount==null) return null; const d=i.lastAt?(Date.now()-new Date(i.lastAt))/DAY:0; return Math.max(0,i.lastCount-(Number(i.rate)||0)*d); }
+function daysLeft(i){ const p=predicted(i), r=Number(i.rate)||0; return p==null||r<=0?null:p/r; }
+function horizon(t){ return Math.min(21,(t?interval(t):14))+2; }
+function threshold(i,t){ const r=Number(i.rate)||0; return Math.max(Number(i.min)||0, r>0?Math.ceil(r*horizon(t)):0); }
+const fmtN=n=>n==null?'?':(Math.round(n*10)/10).toString().replace('.',',');
+function rateTxt(i){ const r=Number(i.rate)||0; if(r<=0) return ''; const w=r*7; return w>=1?`ongeveer ${fmtN(w)} per week`:`ongeveer ${fmtN(r*30)} per maand`; }
+function onList(naam){ const n=String(naam).trim().toLowerCase(); return S.shopping.some(s=>!s.done&&String(s.name).trim().toLowerCase()===n); }
+function shortages(){ const out=[]; S.voorraad.forEach(i=>{ const dl=daysLeft(i); const p=predicted(i); const t=S.tasks.find(x=>x.id===i.taak); if(p==null) return; const thr=threshold(i,t);
+  if(((dl!=null&&dl<=4)||(thr>0&&p<=thr*0.5))&&!onList(i.naam)) out.push({i,p,dl,t}); }); return out.sort((a,b)=>(a.dl??99)-(b.dl??99)); }
+let telResult=null;
+function tellenHtml(t){ const items=itemsOf(t); const set=startSet(t);
+  const sugg=(STARTLIJST[set]||[]).filter(([n])=>!items.some(i=>i.naam.toLowerCase()===n.toLowerCase()));
+  return `${telResult&&telResult.taak===t.id?`<div class="spin" aria-live="polite"><span class="eyebrow">Telling opgeslagen</span><span>${telResult.n} ${telResult.n===1?'ding':'dingen'} geteld${telResult.shop.length?`. Op de boodschappenlijst gezet: <b>${esc(telResult.shop.join(', '))}</b>`:'. Niets hoeft erbij.'}</span><div><button class="btn ghost small" data-telok="1">Mooi</button></div></div>`:''}
+  <p class="muted" style="margin:0">Vul in hoeveel je nu hebt. Leeg laten mag: dan wordt dat ding overgeslagen. Hoe vaker je telt, hoe beter de app weet hoe snel iets opgaat.</p>
+  ${items.length?`<form class="stack" id="f-tel" data-tel="${t.id}" style="gap:8px"><ul class="tel-list">${items.map(i=>{ const p=predicted(i), dl=daysLeft(i), thr=threshold(i,t); const low=p!=null&&thr>0&&p<=thr;
+    return `<li class="${low?'low':''}"><div class="tel-name"><b>${esc(i.naam)}</b><span class="muted">${esc(i.eenheid||'stuks')}${p!=null?` · nu waarschijnlijk ${fmtN(p)}`:' · nog nooit geteld'}${thr?` · ${i.rate>0?`nodig voor ${horizon(t)} dagen: ${thr}`:`minimaal ${thr}`}`:''}</span>${i.rate>0?`<span class="muted tel-hint">${rateTxt(i)}${dl!=null?` · op over ~${Math.max(0,Math.round(dl))} dagen`:''}</span>`:''}</div>
+      <div class="stepper"><button type="button" data-telstep="-1" data-item="${i.id}" aria-label="Minder ${esc(i.naam)}">−</button><input type="number" inputmode="numeric" min="0" step="1" name="tel_${i.id}" placeholder="${p!=null?Math.round(p):'–'}" aria-label="Aantal ${esc(i.naam)}"><button type="button" data-telstep="1" data-item="${i.id}" aria-label="Meer ${esc(i.naam)}">+</button></div>
+      <details class="edit tel-edit" data-k="v${i.id}"><summary>Aanpassen</summary><div class="row" style="margin-top:6px"><input type="text" data-vf="naam" data-item="${i.id}" value="${esc(i.naam)}" aria-label="Naam" class="grow"><input type="text" data-vf="eenheid" data-item="${i.id}" value="${esc(i.eenheid||'')}" placeholder="eenheid" aria-label="Eenheid" style="flex:0 1 110px"><label class="row muted" style="gap:4px;font-size:.82rem">minimaal<input type="number" class="n-input" data-vf="min" data-item="${i.id}" value="${Number(i.min)||''}" min="0" aria-label="Minimaal"></label><select data-vf="winkel" data-item="${i.id}" aria-label="Winkel" style="flex:0 1 120px"><option value="">AH</option><option value="bol.com" ${i.winkel==='bol.com'?'selected':''}>bol.com</option><option value="anders" ${i.winkel==='anders'?'selected':''}>Anders</option></select><button type="button" class="btn ghost small" data-vdel="${i.id}">Verwijder</button></div></details></li>`; }).join('')}</ul>
+    <div class="row"><button class="btn" type="submit">Klaar met tellen</button><button class="btn ghost small" type="button" data-done="${t.id}">Gedaan zonder tellen</button></div></form>`
+  :`<div class="empty">Deze voorraadronde heeft nog geen lijst. Begin met de startlijst of voeg zelf dingen toe.</div>`}
+  ${sugg.length?`<div class="stack" style="gap:6px"><span class="muted" style="font-size:.85rem">Startlijst:</span><div class="suggest">${sugg.map(([n,e,m])=>`<button data-vadd="${esc(JSON.stringify([n,e,m]))}">+ ${esc(n)}</button>`).join('')}${sugg.length>1?`<button data-vaddall="${esc(set)}"><b>Alles toevoegen</b></button>`:''}</div></div>`:''}
+  <form class="row" id="f-vnew" data-taak="${t.id}"><input type="text" name="naam" class="grow" placeholder="Iets toevoegen, bijv. hagelslag" required aria-label="Naam"><input type="text" name="eenheid" placeholder="eenheid" style="flex:0 1 110px" aria-label="Eenheid"><label class="row muted" style="gap:4px;font-size:.82rem">minimaal<input type="number" name="min" class="n-input" min="0" aria-label="Minimaal"></label><button class="btn small" type="submit">Toevoegen</button></form>`; }
+async function addVoorraad(taak,naam,eenheid,min){ return put('voorraad',uid(),{taak,naam:String(naam).slice(0,60),eenheid:String(eenheid||'stuks').slice(0,20),min:Math.max(0,Number(min)||0),winkel:'',lastCount:null,lastAt:null,rate:0,metingen:[]}); }
+async function saveTelling(f){ const t=S.tasks.find(x=>x.id===f.dataset.tel); if(!t) return; const now=new Date(), at=now.toISOString(); const ops=[], shop=[]; let n=0;
+  itemsOf(t).forEach(i=>{ const el=f.elements['tel_'+i.id]; if(!el||el.value==='') return; const c=Math.max(0,Math.round(Number(el.value))); if(!Number.isFinite(c)) return; n++;
+    let rate=Number(i.rate)||0;
+    if(i.lastCount!=null&&i.lastAt){ const d=Math.max(.5,(now-new Date(i.lastAt))/DAY); if(c<=i.lastCount){ const r=(i.lastCount-c)/d; rate=rate>0?rate*.6+r*.4:r; } }
+    const met=(Array.isArray(i.metingen)?i.metingen:[]).concat([{at,n:c}]).slice(-15);
+    ops.push({op:'merge',c:'voorraad',id:i.id,data:{lastCount:c,lastAt:at,rate:Math.round(rate*1000)/1000,metingen:met}});
+    const thr=threshold({...i,rate},t); if((c<=thr&&(thr>0||c===0))&&!onList(i.naam)){ shop.push(i.naam); ops.push({op:'set',c:'shopping',id:uid(),data:{name:i.naam,waar:i.winkel==='bol.com'?'bol.com':i.winkel==='anders'?'':'AH',done:false,by:S.meId,at,voorraadId:i.id}}); } });
+  ops.push({op:'merge',c:'tasks',id:t.id,data:{lastDone:at,lastBy:S.meId}},{op:'set',c:'log',id:uid(),data:{taskId:t.id,spot:spotOf(t),by:S.meId,at,punten:ptsOf(t),naam:t.name}});
+  telResult={taak:t.id,n,shop}; f.reset(); settle(f); return batch(ops); }
 function uitlegFields(t){ t=t||{}; const spot=t.spot||openSpot; const aps=S.apparaten.slice().sort((x,y)=>(x.spot===spot?0:1)-(y.spot===spot?0:1)||(x.naam||'').localeCompare(y.naam||''));
   return `<details class="vv"><summary>Uitleg, materiaal en apparaat</summary><div class="stack" style="gap:6px;margin-top:6px">
     <select name="apparaat" aria-label="Apparaat"><option value="">Geen apparaat</option>${aps.map(a=>`<option value="${esc(a.id)}" ${a.id===t.apparaat?'selected':''}>${esc(apLabel(a))}${a.spot!==spot&&SP[a.spot]?` (${esc(SP[a.spot].name)})`:''}</option>`).join('')}</select>
     <textarea name="stappen" rows="3" placeholder="Stappenplan, één stap per regel" aria-label="Stappenplan">${esc(t.stappen||'')}</textarea>
     <input type="text" name="materiaal" placeholder="Benodigd materiaal, bijv. koolstoffilter" value="${esc(t.materiaal||'')}" aria-label="Materiaal">
     <textarea name="links" rows="2" placeholder="Links, één per regel. Bijv: Uitlegfilmpje | https://..." aria-label="Links">${esc(t.links||'')}</textarea>
+    ${t.once?'':`<label class="row muted" style="gap:8px;font-size:.85rem"><input type="checkbox" name="voorraad" ${t.id&&isVoorraadTask(t)?'checked':''}> Voorraadronde: met een lijst om te tellen</label>`}
   </div></details>`; }
-function readUitleg(f){ if(!f.elements.stappen) return {}; const ap=f.elements.apparaat.value; return {apparaat:S.apparaten.some(a=>a.id===ap)?ap:null,stappen:f.elements.stappen.value.slice(0,2000),materiaal:f.elements.materiaal.value.trim().slice(0,120),links:f.elements.links.value.slice(0,2000)}; }
+function readUitleg(f){ if(!f.elements.stappen) return {}; const ap=f.elements.apparaat.value; return {apparaat:S.apparaten.some(a=>a.id===ap)?ap:null,stappen:f.elements.stappen.value.slice(0,2000),materiaal:f.elements.materiaal.value.trim().slice(0,120),links:f.elements.links.value.slice(0,2000),...(f.elements.voorraad?{voorraad:f.elements.voorraad.checked}:{})}; }
 function apForm(a,id){ a=a||{}; const sp=a.spot||'keuken'; return `<form class="stack" ${id?`data-apedit="${id}"`:'id="f-ap"'} style="gap:6px">
   <div class="row"><input type="text" name="naam" placeholder="Wat is het? Bijv. afzuigkap" value="${esc(a.naam||'')}" required aria-label="Apparaat" style="flex:1 1 160px"><select name="spot" aria-label="Plek" style="flex:0 1 170px">${SPOTS.filter(s=>s.id!=='kalender').map(s=>`<option value="${s.id}" ${s.id===sp?'selected':''}>${esc(s.name)}</option>`).join('')}</select></div>
   <div class="row"><input type="text" name="merk" placeholder="Merk" value="${esc(a.merk||'')}" style="flex:1 1 100px" aria-label="Merk"><input type="text" name="type" placeholder="Type of model" value="${esc(a.type||'')}" style="flex:1 1 120px" aria-label="Type"><input type="text" name="bouwjaar" placeholder="Bouwjaar" value="${esc(a.bouwjaar||'')}" style="flex:0 1 90px" aria-label="Bouwjaar"></div>
@@ -551,6 +594,7 @@ function renderHome(){
   const worst=S.tasks.filter(t=>!t.once&&isActive(t)&&forMe(t.wie)).map(t=>({t,f:fresh(t)})).sort((a,b)=>a.f-b.f).slice(0,4);
   const onceDue=S.tasks.filter(t=>t.once&&isActive(t)&&t.due&&daysUntil(dateFrom(t.due))<=3&&forMe(t.wie)).sort((a,b)=>a.due.localeCompare(b.due));
   $('#attention').innerHTML=`<div class="samen-head"><h3>Komt nu aan de beurt</h3>${bewoners().length>1?`<div class="seg" role="group" aria-label="Filter"><button data-filter="alles" aria-pressed="${!mineFilter()}">Alles</button><button data-filter="mij" aria-pressed="${mineFilter()}">Van mij</button></div>`:''}</div><ul class="att-list">
+    ${shortages().slice(0,4).map(({i,p,dl})=>`<li><button class="link" data-tel="${i.taak}"><b>${esc(i.naam)}</b> bijna op <span class="muted">· nog ~${fmtN(p)} ${esc(i.eenheid||'')}${dl!=null?` · ${Math.max(0,Math.round(dl))} ${Math.round(dl)===1?'dag':'dagen'}`:''}</span></button><button class="btn small" data-vshop="${i.id}">Op de lijst</button></li>`).join('')}
     ${remF.map(e=>{const n=daysUntil(e.date);return `<li><button class="link" data-spot="${e.type==='afspraak'?'hal':'kalender'}"><b>${esc(e.actie)}</b>${whoBadge(e.wie)} <span class="muted">· ${esc(e.titel)}${e.age?` wordt ${e.age}`:''} · ${whenTxt(n)}</span></button>${prepActs(e.key)}</li>`;}).join('')}
     ${onceDue.map(t=>{const n=daysUntil(dateFrom(t.due));return `<li><button class="link" data-spot="${spotOf(t)}" data-opensub="eenmalig">${esc(t.name)}${whoBadge(t.wie)} <span class="muted">· ${esc(SP[spotOf(t)].name)} · ${n<0?'te laat':whenTxt(n)}</span></button><button class="btn small" data-oncedone="${t.id}">Klaar</button></li>`;}).join('')}
     ${worst.map(({t,f})=>`<li><button class="link" data-spot="${spotOf(t)}">${esc(t.name)}${whoBadge(t.wie)} <span class="muted">· ${esc(SP[spotOf(t)].name)}</span></button><span style="color:${stateColor(f)};font-weight:700;font-variant-numeric:tabular-nums">${Math.round(f*100)}%</span></li>`).join('')}</ul>`;
@@ -641,7 +685,7 @@ function newForm(cat,mode){
     ${uitlegFields(null)}
     <div><button class="btn" type="submit">Toevoegen</button></div></form>`;
 }
-function recurringRows(ts){ return ts.length?`<div class="tasks">${ts.map(t=>`<div class="task" style="${isActive(t)?'':'opacity:.62'}">${ring(fresh(t),44)}<div style="min-width:0"><div class="name">${esc(t.name)}${whoBadge(t.wie)}</div><div class="meta">${taskMeta(t)}${t.vervolg&&t.vervolg.naam?` · daarna: ${esc(t.vervolg.naam)} (na ${t.vervolg.uren} uur)`:''}</div></div><button class="btn small" data-done="${t.id}">Gedaan +${ptsOf(t)}</button>${hoeHtml(t)}
+function recurringRows(ts){ return ts.length?`<div class="tasks">${ts.map(t=>`<div class="task" style="${isActive(t)?'':'opacity:.62'}">${ring(fresh(t),44)}<div style="min-width:0"><div class="name">${esc(t.name)}${whoBadge(t.wie)}</div><div class="meta">${taskMeta(t)}${t.vervolg&&t.vervolg.naam?` · daarna: ${esc(t.vervolg.naam)} (na ${t.vervolg.uren} uur)`:''}</div></div>${isVoorraadTask(t)?`<button class="btn small" data-tel="${t.id}">Tellen +${ptsOf(t)}</button>`:`<button class="btn small" data-done="${t.id}">Gedaan +${ptsOf(t)}</button>`}${hoeHtml(t)}
   <details class="edit" data-k="e${t.id}"><summary>Aanpassen</summary><form class="row" data-edit="${t.id}" style="margin-top:8px"><input type="text" name="name" class="grow" value="${esc(t.name)}" aria-label="Naam">${ritmeFields(t)}<label class="row muted" data-r="jaar" style="gap:6px;font-size:.85rem" ${t.trigger||t.perSeizoen?'hidden':''}>elke<input type="number" name="every" class="n-input" min="1" value="${t.everyDays}" aria-label="Elke zoveel dagen">dagen</label><select name="spot" aria-label="Plek in huis" style="flex:0 1 170px">${SPOTS.filter(x=>x.id!=='kalender').map(x=>`<option value="${x.id}" ${x.id===spotOf(t)?'selected':''}>${esc(x.name)}</option>`).join('')}</select><select name="cat" aria-label="Soort" style="flex:0 1 150px">${CATS.map(([c,n])=>`<option value="${c}" ${c===catOf(t)?'selected':''}>${n}</option>`).join('')}</select>${whoSelect('wie',t.wie)}${vervolgFields(t.vervolg)}<label class="row muted" style="gap:6px;font-size:.85rem"><input type="number" name="punten" class="n-input" min="0" max="500" value="${ptsOf(t)}" aria-label="Punten">punten</label>${uitlegFields(t)}<button class="btn small" type="submit">Bewaar</button><button class="btn ghost small" type="button" data-del="${t.id}">Verwijder</button></form></details></div>`).join('')}</div>`:''; }
 function onceRows(ts){ return ts.length?`<div class="tasks">${ts.map(t=>{ const late=!t.done&&t.due&&daysUntil(dateFrom(t.due))<0; return `<div class="once ${late?'late':''}"><input type="checkbox" data-oncedone="${t.id}" ${t.done?'checked disabled':''} aria-label="Afronden"><div style="min-width:0"><div class="name" style="font-weight:600;${t.done?'text-decoration:line-through;color:var(--muted)':''}">${esc(t.name)}${whoBadge(t.wie)}</div><div class="meta">${onceMeta(t)}${t.cat&&openSub==='eenmalig'?` · ${esc(CATN[catOf(t)])}`:''}</div></div>${t.done?'':`<span class="badge-pts">+${ptsOf(t)}</span>`}<button class="btn ghost small" data-del="${t.id}">Weg</button>${t.done?'':hoeHtml(t)}${t.done?'':`<details class="edit" data-k="o${t.id}"><summary>Aanpassen</summary><form class="row" data-onceedit="${t.id}" style="margin-top:8px"><input type="text" name="name" class="grow" value="${esc(t.name)}" aria-label="Naam"><input type="date" name="due" value="${esc(t.due||'')}" aria-label="Uiterlijk op" style="flex:0 1 160px">${whoSelect('wie',t.wie)}${vervolgFields(t.vervolg)}${uitlegFields(t)}<button class="btn small" type="submit">Bewaar</button></form></details>`}</div>`; }).join('')}</div>`:''; }
 function specialHtml(id){
@@ -683,6 +727,7 @@ function renderSheet(){
   } else {
     eyebrow=s.name; const back=`<button class="back" data-back="1">‹ Terug naar ${esc(s.name)}</button>`;
     if(SPECIAL[openSpot]&&SPECIAL[openSpot].some(([id])=>id===openSub)){ title=SPECIAL[openSpot].find(([id])=>id===openSub)[1]; body=back+specialHtml(openSub); h=null; }
+    else if(/^tel:/.test(openSub)){ const t=S.tasks.find(x=>x.id===openSub.slice(4)); if(!t){ openSub=null; return renderSheet(); } title=t.name; eyebrow='Voorraad tellen'; h=fresh(t); body=back+tellenHtml(t); }
     else if(openSub==='apparaten'){ title='Apparaten'; h=null; body=back+apparatenHtml(); }
     else if(openSub==='fotos'){ title="Foto's"; h=null; body=back+fotosHtml(); }
     else if(openSub==='eenmalig'){ title='Eenmalig'; const open=ts.filter(t=>t.once&&!t.done).sort((a,b)=>(a.due||'9999').localeCompare(b.due||'9999')); const done=ts.filter(t=>t.once&&t.done).sort((a,b)=>(b.doneAt||'').localeCompare(a.doneAt||'')).slice(0,5);
@@ -701,7 +746,7 @@ const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const D={};
 function derive(){
   const arr=c=>Object.entries(D[c]||{}).map(([id,d])=>({id,...d}));
-  S.tasks=arr('tasks'); S.shopping=arr('shopping'); S.afspraken=arr('afspraken'); S.dagen=arr('dagen'); S.beloningen=arr('beloningen'); S.gewonnen=arr('gewonnen'); S.swipes=arr('swipes'); S.fotos=arr('fotos'); S.log=arr('log'); S.apparaten=arr('apparaten');
+  S.tasks=arr('tasks'); S.shopping=arr('shopping'); S.afspraken=arr('afspraken'); S.dagen=arr('dagen'); S.beloningen=arr('beloningen'); S.gewonnen=arr('gewonnen'); S.swipes=arr('swipes'); S.fotos=arr('fotos'); S.log=arr('log'); S.apparaten=arr('apparaten'); S.voorraad=arr('voorraad');
   S.geregeld={}; arr('geregeld').forEach(g=>{ if(g.key) S.geregeld[g.key]=true; });
   S.profiles={...(D.profiles||{})}; S.voorbereiding=D.voorbereiding||{}; S.hh=(D.household&&D.household.main)||{};
 }
@@ -761,6 +806,13 @@ document.addEventListener('click',e=>{
   if(b.dataset.apdel){ if(!b.dataset.armed){ b.dataset.armed='1'; b.textContent='Zeker?'; return; } const id=b.dataset.apdel; safe(del('apparaten',id)); S.tasks.filter(t=>t.apparaat===id).forEach(t=>safe(put('tasks',t.id,{apparaat:null},true))); return; }
   if(b.dataset.apfromfoto){ const f=S.fotos.find(x=>x.id===b.dataset.apfromfoto); if(f){ b.disabled=true; safe(put('apparaten',uid(),{spot:f.spot,naam:f.notitie?f.notitie.slice(0,80):(SP[f.spot]?.name||'Apparaat'),merk:f.merk||'',type:f.type||'',bouwjaar:'',notitie:'',links:'',fotoId:f.id})); } return; }
   if(b.dataset.instpage!==undefined){ instPage=b.dataset.instpage||null; fillSettings(); window.scrollTo(0,0); return; }
+  if(b.dataset.tel){ const t=S.tasks.find(x=>x.id===b.dataset.tel); if(!t) return; telResult=null; if(openSpot!==spotOf(t)||$('#sheet').hidden) openSheet(spotOf(t),'tel:'+t.id); else { openSub='tel:'+t.id; renderSheet(); $('#sheet').scrollTop=0; } return; }
+  if(b.dataset.telok){ telResult=null; renderSheet(); return; }
+  if(b.dataset.telstep){ const inp=b.closest('li').querySelector('input[type=number]'); const cur=inp.value===''?Number(inp.placeholder)||0:Number(inp.value)||0; inp.value=Math.max(0,cur+Number(b.dataset.telstep)); return; }
+  if(b.dataset.vadd){ const [n,e,m]=JSON.parse(b.dataset.vadd); safe(addVoorraad(openSub.slice(4),n,e,m)); return; }
+  if(b.dataset.vaddall){ const tid=openSub.slice(4); const t=S.tasks.find(x=>x.id===tid); const have=itemsOf(t).map(i=>i.naam.toLowerCase()); safe(batch((STARTLIJST[b.dataset.vaddall]||[]).filter(([n])=>!have.includes(n.toLowerCase())).map(([n,e,m])=>({op:'set',c:'voorraad',id:uid(),data:{taak:tid,naam:n,eenheid:e,min:m,winkel:'',lastCount:null,lastAt:null,rate:0,metingen:[]}})))); return; }
+  if(b.dataset.vdel){ if(!b.dataset.armed){ b.dataset.armed='1'; b.textContent='Zeker?'; return; } safe(del('voorraad',b.dataset.vdel)); return; }
+  if(b.dataset.vshop){ const i=S.voorraad.find(x=>x.id===b.dataset.vshop); if(i&&!onList(i.naam)) safe(put('shopping',uid(),{name:i.naam,waar:i.winkel==='bol.com'?'bol.com':i.winkel==='anders'?'':'AH',done:false,by:S.meId,at:new Date().toISOString(),voorraadId:i.id})); return; }
   if(b.dataset.filter){ lsSet('onshuis-filter',b.dataset.filter==='mij'?'mij':null); renderHome(); return; }
   if(b.dataset.prepcheck){ const key=b.dataset.prepcheck; if(b.checked) safe(regel(key)); else { const [ek]=key.split('|'); safe(del('geregeld',key.replace(/[^A-Za-z0-9_\-.~:@+]/g,'_').slice(0,190))); if(key.endsWith('|a')&&S.geregeld[ek]) safe(del('geregeld',ek.replace(/[^A-Za-z0-9_\-.~:@+]/g,'_').slice(0,190))); } return; }
   if(b.dataset.prepx){ const box=b.closest('.prep-acts'); const k=esc(b.dataset.prepx); box.classList.add('ask'); box.innerHTML=`<span class="muted" style="font-size:.78rem">Weghalen:</span><button class="btn ghost small" data-prepskip="${k}">Alleen dit jaar</button><button class="btn ghost small" data-prepdel="${k}">Altijd</button><button class="btn ghost small" data-prepcancel="1" aria-label="Annuleren">Terug</button>`; return; }
@@ -792,6 +844,7 @@ document.addEventListener('change',e=>{ const el=e.target;
   if(el.name==='ritme'){ const f=el.closest('form'); f.querySelectorAll('[data-r]').forEach(x=>x.hidden=x.dataset.r!==el.value); }
   if(el.id==='foto-in') handlePhoto(el);
   if(el.id==='ap-scan') scanPlate(el);
+  if(el.dataset&&el.dataset.vf&&el.dataset.item){ const k=el.dataset.vf; let v=el.value; if(k==='min') v=Math.max(0,Number(v)||0); else v=String(v).trim().slice(0,60); if(k==='naam'&&!v) return; safe(put('voorraad',el.dataset.item,{[k]:v},true)); }
   if(el.dataset&&el.dataset.rwpts){ const n=Math.round(Number(el.value)); safe(put('beloningen',el.dataset.rwpts,{punten:n>0?Math.min(5000,n):null},true)); }
   if(el.id==='who-sel'){ kiesIk(el.value); } });
 document.addEventListener('submit',e=>{
@@ -806,6 +859,8 @@ document.addEventListener('submit',e=>{
     if(pendingScan){ const fid=uid(), sc=pendingScan; d.fotoId=fid; Store.set('fotobestand',fid,{img:sc.big}).then(()=>put('fotos',fid,{spot:d.spot,thumb:sc.thumb,at:new Date().toISOString(),by:S.meId,merk:d.merk,type:d.type,notitie:d.naam})).catch(()=>{}); }
     apDraft=null; pendingScan=null; scanMsg=''; safe(put('apparaten',id,d)); }
   else if(f.dataset.apedit){ const d=readAp(f); if(document.activeElement) document.activeElement.blur(); if(d.naam) safe(put('apparaten',f.dataset.apedit,d,true)); }
+  else if(f.id==='f-tel'){ safe(saveTelling(f)); }
+  else if(f.id==='f-vnew'){ const n=f.elements.naam.value.trim(); if(n){ safe(addVoorraad(f.dataset.taak,n,f.elements.eenheid.value.trim()||'stuks',f.elements.min.value)); f.reset(); settle(f); } }
   else if(f.id==='f-kal-af'){ const t=f.elements.titel.value.trim(); if(t) safe(addAfspraak(t.slice(0,120),calSel,f.elements.prep.value.trim().slice(0,240))); }
   else if(f.dataset.onceedit){ const due=f.elements.due.value; safe(put('tasks',f.dataset.onceedit,{name:f.elements.name.value.trim()||'Taak',due:/^\d{4}-\d{2}-\d{2}$/.test(due)?due:null,wie:validWie(f.elements.wie.value),vervolg:readVervolg(f),...readUitleg(f)},true)); }
   else if(f.dataset.prepadd){ const e=events().find(x=>x.key===f.dataset.prepadd); const t=f.elements.titel.value.trim(); if(e&&t){ const items=prepItems(e).slice(); items.push({id:uid(),titel:t.slice(0,100),dagen:Math.max(0,Math.min(120,Number(f.elements.dagen.value)||7)),wie:validWie(f.elements.wie.value)}); openPrep.add(tplKey(e)); safe(savePrep(e,items)); } }
@@ -893,7 +948,8 @@ function findOcc(ek){ const y=new Date().getFullYear(); return occurrences([y-1,
 function whenTxtAny(n){ return n===0?'vandaag':n===1?'morgen':n===-1?'gisteren':n>0?`over ${n} dagen`:`${-n} dagen geleden`; }
 
 /* ---------- lijst-tab ---------- */
-function renderLijst(){ if($('#v-lijst').hidden){ $('#lijst-body').innerHTML=''; return; } $('#lijst-body').innerHTML=specialHtml('boodschappen'); }
+function renderLijst(){ if($('#v-lijst').hidden){ $('#lijst-body').innerHTML=''; return; } const sh=shortages();
+  $('#lijst-body').innerHTML=specialHtml('boodschappen')+(sh.length?`<div class="card stack" style="margin-top:12px"><h3>Waarschijnlijk bijna op</h3><p class="muted" style="margin:0;font-size:.85rem">Volgens jullie eerdere tellingen.</p><ul class="list">${sh.map(({i,p,dl})=>`<li><span><b>${esc(i.naam)}</b><br><span class="muted">nog ~${fmtN(p)} ${esc(i.eenheid||'')}${dl!=null?` · op over ~${Math.max(0,Math.round(dl))} dagen`:''}</span></span><button class="btn small" data-vshop="${i.id}">Op de lijst</button></li>`).join('')}</ul></div>`:''); }
 
 /* ---------- wie ben jij ---------- */
 function renderWho(){ const bw=bewoners(); const sel=$('#who-sel');

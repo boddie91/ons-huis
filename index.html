@@ -258,6 +258,16 @@ textarea{background:var(--surface);border:1px solid var(--line);border-radius:10
 .draft{border-color:var(--accent)}
 .scan-thumb{width:120px;height:auto;border-radius:8px}
 pre.ocr{white-space:pre-wrap;font-size:.78rem;background:var(--surface-2);border-radius:8px;padding:8px;margin:6px 0 0;max-height:180px;overflow:auto}
+.tel-list{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.tel-list li{display:grid;grid-template-columns:1fr auto;gap:4px 10px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px}
+.tel-list li.low{border-color:var(--warn)}
+.tel-list .tel-name{display:grid;gap:1px;min-width:0}
+.tel-list .tel-name span{font-size:.8rem}
+.tel-hint{color:var(--accent)!important}
+.tel-edit{grid-column:1/-1}
+.stepper{display:flex;align-items:center;gap:4px}
+.stepper button{width:36px;height:36px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);font-size:1.15rem;font-weight:700;line-height:1}
+.stepper input{width:58px!important;text-align:center;padding:7px 4px;font-variant-numeric:tabular-nums;font-weight:600}
 .badge-pts{font-size:.72rem;font-weight:700;color:var(--accent);border:1px solid var(--accent);border-radius:6px;padding:1px 5px;white-space:nowrap}
 
 /* Chat */
