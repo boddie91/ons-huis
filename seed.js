@@ -412,5 +412,65 @@ window.ONS_HUIS_SEED = [
   "punten": 15,
   "lastDone": "2026-08-15T12:00:00Z",
   "lastBy": null
+ },
+ {
+  "id": "t42",
+  "spot": "auto2",
+  "cat": "schoonmaak",
+  "name": "Auto wassen",
+  "everyDays": 30,
+  "lastDone": "2026-10-25T12:00:00Z",
+  "lastBy": null
+ },
+ {
+  "id": "t43",
+  "spot": "auto2",
+  "cat": "onderhoud",
+  "name": "Bandenspanning checken",
+  "everyDays": 60,
+  "lastDone": "2026-10-10T12:00:00Z",
+  "lastBy": null
+ },
+ {
+  "id": "t44",
+  "spot": "auto2",
+  "cat": "onderhoud",
+  "name": "Onderhoudsbeurt",
+  "everyDays": 365,
+  "lastDone": "2026-05-01T12:00:00Z",
+  "lastBy": null
+ },
+ {
+  "id": "t45",
+  "spot": "auto2",
+  "cat": "onderhoud",
+  "name": "Ruitenvloeistof bijvullen",
+  "everyDays": 60,
+  "lastDone": "2026-09-20T12:00:00Z",
+  "lastBy": null
+ },
+ {
+  "id": "t46",
+  "spot": "auto2",
+  "cat": "onderhoud",
+  "name": "Laadkabel en laadpunt nalopen",
+  "everyDays": 90,
+  "lastDone": "2026-09-01T12:00:00Z",
+  "lastBy": null
+ },
+ {
+  "id": "t47",
+  "spot": "auto2",
+  "cat": "onderhoud",
+  "name": "Winter- of zomerbanden wisselen",
+  "everyDays": 180,
+  "perSeizoen": {
+   "lente": 180,
+   "zomer": 0,
+   "herfst": 180,
+   "winter": 0
+  },
+  "lastDone": "2026-04-10T12:00:00Z",
+  "lastBy": null
  }
 ];

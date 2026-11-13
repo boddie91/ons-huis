@@ -268,6 +268,8 @@ pre.ocr{white-space:pre-wrap;font-size:.78rem;background:var(--surface-2);border
 .stepper{display:flex;align-items:center;gap:4px}
 .stepper button{width:36px;height:36px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);font-size:1.15rem;font-weight:700;line-height:1}
 .stepper input{width:58px!important;text-align:center;padding:7px 4px;font-variant-numeric:tabular-nums;font-weight:600}
+.lijst-seg{margin-bottom:12px}
+.lijst-seg button{padding:8px 16px;font-weight:600}
 .badge-pts{font-size:.72rem;font-weight:700;color:var(--accent);border:1px solid var(--accent);border-radius:6px;padding:1px 5px;white-space:nowrap}
 
 /* Chat */
@@ -331,7 +333,7 @@ label.f{display:grid;gap:4px;font-size:.82rem;color:var(--muted);font-weight:600
     <div id="banner" class="banner">Even het huis ophalen…</div>
 
     <div class="scene-box">
-      <svg class="scene" id="scene" viewBox="0 0 420 410" role="img" aria-label="Opengewerkt poppenhuis met zolder, slaapkamer, badkamer, woonkamer, hal en keuken, plus tuin, schuur met kluis, auto en brievenbus. Tik op een voorwerp.">
+      <svg class="scene" id="scene" viewBox="0 0 420 440" role="img" aria-label="Opengewerkt poppenhuis met zolder, slaapkamer, badkamer, woonkamer, hal en keuken, plus tuin, schuur met kluis, de Twingo op de oprit, de Lynk & Co op straat, auto en brievenbus. Tik op een voorwerp.">
         <defs>
           <linearGradient id="skyg" x1="0" y1="0" x2="0" y2="1"><stop id="sky1" offset="0" stop-color="#8fc7ea"/><stop id="sky2" offset="1" stop-color="#dff1f7"/></linearGradient>
           <pattern id="mud" width="8" height="8" patternUnits="userSpaceOnUse"><circle cx="2" cy="3" r="1.6" fill="#6b5536"/><circle cx="6" cy="6" r="1.1" fill="#7a6142"/></pattern>
@@ -342,7 +344,7 @@ label.f{display:grid;gap:4px;font-size:.82rem;color:var(--muted);font-weight:600
           <radialGradient id="lampglow"><stop offset="0" stop-color="#ffd98a" stop-opacity=".75"/><stop offset="1" stop-color="#ffd98a" stop-opacity="0"/></radialGradient>
         </defs>
         <!-- sky -->
-        <rect width="420" height="410" fill="url(#skyg)"/>
+        <rect width="420" height="440" fill="url(#skyg)"/>
         <g id="stars" opacity="0" fill="#fff">
           <circle class="star" cx="30" cy="30" r="1.2"/><circle class="star" cx="90" cy="18" r="1"/><circle class="star" cx="150" cy="40" r="1.3"/><circle class="star" cx="250" cy="22" r="1"/><circle class="star" cx="300" cy="50" r="1.2"/><circle class="star" cx="380" cy="80" r="1"/><circle class="star" cx="360" cy="20" r="1.3"/><circle class="star" cx="60" cy="90" r="1"/><circle class="star" cx="210" cy="14" r="1"/>
         </g>
@@ -354,7 +356,7 @@ label.f{display:grid;gap:4px;font-size:.82rem;color:var(--muted);font-weight:600
         </g>
         <g id="rain" opacity="0" stroke="#7fa6c4" stroke-width="1.2" stroke-linecap="round"></g>
         <g id="snow" opacity="0" fill="#ffffff"></g>
-        <rect id="bolt" class="bolt" width="420" height="410" fill="#ffffff" opacity="0" style="display:none"/>
+        <rect id="bolt" class="bolt" width="420" height="440" fill="#ffffff" opacity="0" style="display:none"/>
 
         <!-- TUIN (behind house): tree + hedge -->
         <g class="spot outside" data-spot="tuin">
@@ -557,6 +559,22 @@ label.f{display:grid;gap:4px;font-size:.82rem;color:var(--muted);font-weight:600
           <ellipse id="hubloose" cx="-6" cy="39" rx="4.5" ry="1.8" fill="#c4c9ce" stroke="#7d848a" stroke-width=".7" opacity="0" transform="rotate(-12 -6 39)"/>
           <path id="carshine" d="M14 18 Q30 15 46 17" stroke="#ffffff" stroke-width="2" fill="none" opacity="0" stroke-linecap="round"/>
         </g>
+        <!-- STRAAT -->
+        <rect class="outside" x="0" y="410" width="420" height="30" fill="#7d8186"/>
+        <rect class="outside" x="0" y="410" width="420" height="3" fill="#a3a6a9"/>
+        <path class="outside" d="M8 428 H40 M64 428 H96 M120 428 H152 M176 428 H208 M352 428 H384 M408 428 H420" stroke="#e8e6df" stroke-width="2"/>
+        <!-- LYNK & CO -->
+        <g class="spot outside" data-spot="auto2" transform="translate(232 394) scale(1.08)">
+          <path d="M6 26 Q6 14 18 12 L30 2 Q34 0 40 0 L64 0 Q70 0 74 6 L82 14 Q90 16 90 26 L90 32 L6 32 Z" fill="#2f3439"/>
+          <path d="M33 5 L40 3 L54 3 L54 13 L26 13 Z M58 3 L66 3 Q70 4 74 12 L58 13 Z" fill="#a9d4e6"/>
+          <g id="carwindirt2" opacity="0"><path d="M33 5 L40 3 L54 3 L54 13 L26 13 Z M58 3 L66 3 Q70 4 74 12 L58 13 Z" fill="#8c7a5a" opacity=".6"/><path d="M30 12 q10 -7 22 -1 M60 12 q6 -5 12 0" stroke="#6e5c3e" stroke-width="1.6" fill="none" opacity=".75" stroke-linecap="round"/></g>
+          <g id="carmud2" opacity="0" fill="#6b5536"><path d="M8 32 q3 -8 9 -6 q4 -6 8 2 q3 -3 5 4Z"/><path d="M56 32 q4 -9 9 -5 q5 -4 8 3 q4 -2 6 2Z"/><path d="M38 26 q3 -2 5 1 q-2 3 -5 -1Z"/><path d="M84 25 q2 -1 3 1 l-1 5 q-2 -2 -2 -6Z"/></g>
+          <g id="hoodopen2" opacity="0"><path d="M75 13 L89 15 Q90 17 90 20 L76 17Z" fill="#2a2e33"/><rect x="78" y="15" width="8" height="3.5" rx=".8" fill="#6b7178"/><path d="M74 13.5 L76.5 11.5 L84 -10 L87 -9 L78.5 14Z" fill="#3d4349" stroke="#22262a" stroke-width=".8"/></g>
+          <circle cx="24" cy="33" r="8" fill="#2a2e33"/><circle cx="24" cy="33" r="3" fill="#9aa1a8"/>
+          <circle cx="72" cy="33" r="8" fill="#2a2e33"/><circle id="hub22" cx="72" cy="33" r="3" fill="#9aa1a8"/>
+          <ellipse id="hubloose2" cx="-6" cy="39" rx="4.5" ry="1.8" fill="#c4c9ce" stroke="#7d848a" stroke-width=".7" opacity="0" transform="rotate(-12 -6 39)"/>
+          <path id="carshine2" d="M14 18 Q30 15 46 17" stroke="#ffffff" stroke-width="2" fill="none" opacity="0" stroke-linecap="round"/>
+        </g>
         <g id="leaves" opacity="0"></g>
         <g id="houseglitter" pointer-events="none"></g>
         <g id="fx" pointer-events="none"></g>
@@ -607,7 +625,7 @@ label.f{display:grid;gap:4px;font-size:.82rem;color:var(--muted);font-weight:600
 
   <!-- LIJST -->
   <section id="v-lijst" class="stack" hidden>
-    <div class="top"><div><div class="eyebrow">Boodschappen</div><h1>Boodschappenlijst</h1></div></div>
+    <div class="top"><div><div class="eyebrow">Lijst</div><h1 id="lijst-title">Boodschappen</h1></div></div>
     <div id="lijst-body"></div>
   </section>
 
