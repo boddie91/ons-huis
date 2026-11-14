@@ -846,7 +846,8 @@ document.addEventListener('click',e=>{
   if(b.dataset.apfromfoto){ const f=S.fotos.find(x=>x.id===b.dataset.apfromfoto); if(f){ b.disabled=true; safe(put('apparaten',uid(),{spot:f.spot,naam:f.notitie?f.notitie.slice(0,80):(SP[f.spot]?.name||'Apparaat'),merk:f.merk||'',type:f.type||'',bouwjaar:'',notitie:'',links:'',fotoId:f.id})); } return; }
   if(b.dataset.instpage!==undefined){ instPage=b.dataset.instpage||null; fillSettings(); window.scrollTo(0,0); return; }
   if(b.dataset.tel){ const t=S.tasks.find(x=>x.id===b.dataset.tel); if(!t) return; telResult=null; closeSheet(); lijstView='tel:'+t.id; showTab('lijst'); return; }
-  if(b.dataset.lview){ lijstView=b.dataset.lview; renderLijst(); window.scrollTo(0,0); return; }
+  if(b.dataset.lview){ lijstView=b.dataset.lview; if(lijstView==='voorraad') lastStock=null; renderLijst(); window.scrollTo(0,0); return; }
+  if(b.dataset.stock){ lijstView='stock:'+b.dataset.stock; lastStock=b.dataset.stock; renderLijst(); window.scrollTo(0,0); return; }
   if(b.dataset.telok){ telResult=null; renderLijst(); return; }
   if(b.dataset.telstep){ const inp=b.closest('li').querySelector('input[type=number]'); const cur=inp.value===''?Number(inp.placeholder)||0:Number(inp.value)||0; inp.value=Math.max(0,cur+Number(b.dataset.telstep)); return; }
   if(b.dataset.vadd){ const [n,e,m]=JSON.parse(b.dataset.vadd); safe(addVoorraad(b.dataset.taak,n,e,m)); return; }
@@ -989,19 +990,44 @@ function findOcc(ek){ const y=new Date().getFullYear(); return occurrences([y-1,
 function whenTxtAny(n){ return n===0?'vandaag':n===1?'morgen':n===-1?'gisteren':n>0?`over ${n} dagen`:`${-n} dagen geleden`; }
 
 /* ---------- lijst-tab ---------- */
-let lijstView='boodschappen';
+let lijstView='boodschappen', lastStock=null;
 function bijnaOpHtml(){ const sh=shortages(); return sh.length?`<div class="card stack"><h3>Waarschijnlijk bijna op</h3><p class="muted" style="margin:0;font-size:.85rem">Volgens jullie eerdere tellingen.</p><ul class="list">${sh.map(({i,p,dl})=>`<li><span><b>${esc(i.naam)}</b><br><span class="muted">nog ~${fmtN(p)} ${esc(i.eenheid||'')}${dl!=null?` · op over ~${Math.max(0,Math.round(dl))} dagen`:''}</span></span><button class="btn small" data-vshop="${i.id}">Op de lijst</button></li>`).join('')}</ul></div>`:''; }
 function voorraadOverview(){ const rondes=S.tasks.filter(isVoorraadTask).sort((a,b)=>fresh(a)-fresh(b));
   return `${rondes.length?`<div class="tasks">${rondes.map(t=>{ const its=itemsOf(t); const low=its.filter(i=>{ const p=predicted(i), thr=threshold(i,t); return p!=null&&thr>0&&p<=thr; }).length; const d=daysAgo(t);
-    return `<div class="task">${ring(fresh(t),44)}<div style="min-width:0"><div class="name">${esc(t.name)}</div><div class="meta">${its.length?`${its.length} ${its.length===1?'ding':'dingen'}`:'nog geen lijst'}${low?` · <b style="color:var(--warn)">${low} bijna op</b>`:''} · ${d===null?'nog nooit geteld':d===0?'vandaag geteld':d===1?'gisteren geteld':`${d} dagen geleden geteld`} · elke ${interval(t)} dagen</div></div><button class="btn small" data-tel="${t.id}">Tellen +${ptsOf(t)}</button></div>`; }).join('')}</div>`:'<div class="empty">Nog geen voorraadrondes.</div>'}
+    return `<div class="task">${ring(fresh(t),44)}<button class="ev-link ronde-link" data-stock="${t.id}" style="min-width:0"><div class="name">${esc(t.name)} <span class="chev-s" aria-hidden="true">›</span></div><div class="meta">${its.length?`${its.length} ${its.length===1?'ding':'dingen'}`:'nog geen lijst'}${low?` · <b style="color:var(--warn)">${low} bijna op</b>`:''} · ${d===null?'nog nooit geteld':d===0?'vandaag geteld':d===1?'gisteren geteld':`${d} dagen geleden geteld`} · elke ${interval(t)} dagen</div></button><button class="btn small" data-tel="${t.id}">Tellen +${ptsOf(t)}</button></div>`; }).join('')}</div>`:'<div class="empty">Nog geen voorraadrondes.</div>'}
   <details class="vv"><summary>Nieuwe voorraadronde</summary><form class="row" id="f-vronde" style="margin-top:6px"><input type="text" name="naam" class="grow" placeholder="Bijv. vriezer of schoonmaakkast" required aria-label="Naam"><select name="spot" aria-label="Plek" style="flex:0 1 170px">${SPOTS.filter(s=>s.id!=='kalender').map(s=>`<option value="${s.id}" ${s.id==='koelkast'?'selected':''}>${esc(s.name)}</option>`).join('')}</select><label class="row muted" style="gap:6px;font-size:.85rem">elke<input type="number" name="every" class="n-input" min="1" value="14" aria-label="Elke zoveel dagen">dagen</label><button class="btn small" type="submit">Toevoegen</button></form></details>`; }
+function stockHtml(t){ const rank=i=>{ const p=predicted(i), thr=threshold(i,t); return p==null?3:p<=0.5?0:thr>0&&p<=thr?1:2; }; const items=itemsOf(t).sort((a,b)=>rank(a)-rank(b)||(a.naam||'').localeCompare(b.naam||''));
+  if(!items.length) return `<div class="empty">Deze ronde heeft nog geen lijst.</div><div><button class="btn" data-tel="${t.id}">Lijst maken en tellen</button></div>`;
+  const rows=items.map(i=>{ const p=predicted(i), dl=daysLeft(i), thr=threshold(i,t), r=Number(i.rate)||0;
+    const st=p==null?['onbekend','var(--muted)']:p<=0.5?['op','var(--bad)']:thr>0&&p<=thr?['bijna op','var(--warn)']:['genoeg','var(--good)'];
+    const max=Math.max(thr*1.6,i.lastCount||0,p||0,1), pct=p==null?0:Math.min(100,p/max*100), mark=thr>0?Math.min(100,thr/max*100):null;
+    const met=(Array.isArray(i.metingen)?i.metingen:[]).slice().reverse();
+    return `<li class="stock-row"><details data-k="s${i.id}"><summary><span class="stock-main"><b>${esc(i.naam)}</b><span class="muted">${p==null?'nog nooit geteld':`nu waarschijnlijk <b style="color:var(--ink)">${fmtN(p)}</b> ${esc(i.eenheid||'')}`}</span></span><span class="stock-chip" style="color:${st[1]};border-color:${st[1]}">${st[0]}</span></summary>
+      <div class="stack" style="gap:6px;margin-top:8px">
+        ${p!=null?`<div class="bar stock-bar" role="img" aria-label="${fmtN(p)} van ${fmtN(max)}"><span style="width:${pct}%;background:${st[1]}"></span>${mark!=null?`<i class="mark" style="left:${mark}%"></i>`:''}</div>`:''}
+        <div class="stock-facts">
+          <span>Laatst geteld</span><b>${i.lastAt?`${fmtN(i.lastCount)} ${esc(i.eenheid||'')} op ${new Date(i.lastAt).toLocaleDateString('nl-NL',{day:'numeric',month:'short'})}`:'nog nooit'}</b>
+          <span>Verbruik</span><b>${r>0?rateTxt(i):'nog niet bekend (tel nog een keer)'}</b>
+          <span>Op over</span><b>${dl!=null?`ongeveer ${Math.max(0,Math.round(dl))} dagen`:'–'}</b>
+          <span>${r>0?`Nodig voor ${horizon(t)} dagen`:'Minimaal'}</span><b>${thr||'–'} ${esc(i.eenheid||'')}</b>
+          ${i.winkel?`<span>Winkel</span><b>${i.winkel==='anders'?'anders':esc(i.winkel)}</b>`:''}
+        </div>
+        ${met.length>1?`<div class="muted" style="font-size:.8rem">Eerdere tellingen: ${met.slice(0,6).map(m=>`${new Date(m.at).toLocaleDateString('nl-NL',{day:'numeric',month:'short'})}: ${m.n}`).join(' · ')}</div>`:''}
+        <div class="row">${onList(i.naam)?'<span class="muted" style="font-size:.85rem">Staat al op de boodschappenlijst</span>':`<button class="btn small ghost" data-vshop="${i.id}">Op de boodschappenlijst</button>`}</div>
+      </div></details></li>`; }).join('');
+  const low=items.filter(i=>{ const p=predicted(i), thr=threshold(i,t); return p!=null&&thr>0&&p<=thr; }).length; const d=daysAgo(t);
+  return `<p class="muted" style="margin:0">${items.length} ${items.length===1?'ding':'dingen'}${low?` · <b style="color:var(--warn)">${low} bijna op</b>`:''} · ${d===null?'nog nooit geteld':d===0?'vandaag geteld':d===1?'gisteren geteld':`${d} dagen geleden geteld`}. De aantallen zijn een schatting op basis van jullie tellingen. Tik op een regel voor details.</p>
+  <ul class="stock-list">${rows}</ul>
+  <div><button class="btn" data-tel="${t.id}">Nu tellen</button></div>`; }
 function renderLijst(){ if($('#v-lijst').hidden){ $('#lijst-body').innerHTML=''; return; }
-  let t=null; if(lijstView.startsWith('tel:')){ t=S.tasks.find(x=>x.id===lijstView.slice(4)); if(!t) lijstView='voorraad'; }
+  let t=null, st=null; if(lijstView.startsWith('tel:')){ t=S.tasks.find(x=>x.id===lijstView.slice(4)); if(!t) lijstView='voorraad'; }
+  if(lijstView.startsWith('stock:')){ st=S.tasks.find(x=>x.id===lijstView.slice(6)); if(!st) lijstView='voorraad'; }
   const voorraad=lijstView!=='boodschappen';
-  $('#lijst-title').textContent=t?'Voorraad tellen':voorraad?'Voorraad':'Boodschappen';
+  $('#lijst-title').textContent=t?'Voorraad tellen':st?'Huidige voorraad':voorraad?'Voorraad':'Boodschappen';
   const seg=`<div class="seg lijst-seg" role="group" aria-label="Weergave"><button data-lview="boodschappen" aria-pressed="${!voorraad}">Boodschappen</button><button data-lview="voorraad" aria-pressed="${voorraad}">Voorraad</button></div>`;
   let body;
-  if(t) body=`<button class="back" data-lview="voorraad">‹ Alle voorraadrondes</button><h2>${esc(t.name)}</h2>${tellenHtml(t)}`;
+  if(t) body=`<button class="back" data-lview="${t&&lastStock===t.id?'stock:'+t.id:'voorraad'}">‹ ${lastStock===t.id?'Huidige voorraad':'Alle voorraadrondes'}</button><h2>${esc(t.name)}</h2>${tellenHtml(t)}`;
+  else if(st) body=`<button class="back" data-lview="voorraad">‹ Alle voorraadrondes</button><h2>${esc(st.name)}</h2>${stockHtml(st)}`;
   else if(voorraad) body=bijnaOpHtml()+voorraadOverview();
   else body=specialHtml('boodschappen')+bijnaOpHtml();
   $('#lijst-body').innerHTML=seg+`<div class="stack">${body}</div>`; }
